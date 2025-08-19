@@ -107,3 +107,22 @@ def update_report(report_id: str, update_data: report_update, current_user: dict
 
     update_report=reports_collection.find_one({"_id":ObjectId(report_id)})
     return report_out(**update_report)
+
+
+
+def delete_Reports(report_id:str,current_user:dict):
+    db=get_db()
+    reports_collection=db["report"]
+    reports=reports_collection.find_one({"_id":ObjectId(report_id)})
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="reoprt not found"
+        )    
+
+    if str(report["report_id"]) != current_user["user_id"] and current_user ["role"]!= "manager" :
+        raise HTTPException(status_code=HTTP_403_FORBIDDEN,
+                            detail="no access"
+                            )
+    reports_collection.delete_one({"_id":ObjectId(report_id)})
+    return{"message":"Report successfully deleted"}
