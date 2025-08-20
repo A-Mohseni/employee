@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from router.user import router as user_router
-from router.purchase_item import router as purchase_item_router
+from ..router.user import router as user_router
+from ..router.purchase_item import router as purchase_item_router
 
 app = FastAPI(redoc_url="/redoc")
 

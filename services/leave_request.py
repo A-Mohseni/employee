@@ -1,72 +1,146 @@
-from dataclasses import field
 from datetime import datetime
-from gc import collect
-from multiprocessing import Value
-from bson import ObjectId, objectid
+from typing import List, Optional
+
+from bson import ObjectId
 from fastapi import HTTPException, status
 from pymongo.synchronous import collection
-from models.leave_request import leave_request_creat,leave_request_update,leave_request_out
+
+from models.leave_request import (
+    LeaveRequestCreate,
+    LeaveRequestOut,
+    LeaveRequestUpdate,
+)
 from utils.db import get_db
-from typing import Optional, Lis
 
 
-def creat_leaveRequest(data:leave_request_creat,current_user:dict)->leave_request_out:
-    if current_user["role"]!="manager":
-        raise HTTPException(
-               status_code=status.HTTP_403_FORBIDDEN,
-               detail="no acces" 
-        )
-    db=get_db()
-    collection=db["leaveRequest"]
-
-    leaveRequest_data={
-        "start_date":data.start_date, 
-        "end_date": data.end_date,
-        "reason": data.reason,
-        "status": data.status
-   }
-    collection.insert_one(leaveRequest_data)
-    return leave_request_out(**leaveRequest_data)
-
-
-def get_leaveRequest(request_id:ObjectId,
-    limit:int=20,
-    offset:int=0,
-    current_user:dict=None
-    )->list[leave_request_out]:
-
-    db=get_db()
-    collection=db["leaveRequest"]
-
-
-    filter_query={}
-    if request_id:
-        filter_query["request_id"]=ObjectId(request_id)
-    if current_user["role"]== "eployee":
-        filter_query["request_id"]=ObjectId(current_user[request_id])
-       
-       
-    cursor=collection.find(filter_query).limit(limit).skip(offset)
-    return [leave_request_out(**item) for item in cursor ]
-
-
-
-def update_leaveRequest(request_id:str,update_data:leave_request_update,current_user:dict)->leave_request_out:
-    db=get_db()
-    collection=db["leaveRequest"]
-
-    LR=collection.find_one({"_id":ObjectId(request_id)})
-
-    if not LR:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="NotFound"
-        )
-    if str(LR[request_id])== current_user["user_id"] and current_user["role"]!="employee":
+def create_leave_request(
+    data: LeaveRequestCreate, current_user: dict
+) -> LeaveRequestOut:
+    if current_user["role"] != "manager":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=" no acces"
+            detail="not access",
         )
 
-    update_fields={k:v for k,v in update_data.dict(exclude_unset=True).items()}
-    update_fields[field]=Value
+    db = get_db()
+    collection = db["leaveRequest"]
+
+    doc = {
+        "user_id": data.user_id,
+        "start_date": data.start_date,
+        "end_date": data.end_date,
+        "reason": data.reason,
+        "status": data.status,
+        "created_at": datetime.now(),
+    }
+    result = collection.insert_one(doc)
+
+    return LeaveRequestOut(
+        request_id=result.inserted_id,
+        user_id=doc["user_id"],
+        start_date=doc["start_date"],
+        end_date=doc["end_date"],
+        reason=doc["reason"],
+        status=doc["status"],
+        approved_by=None,
+        created_at=doc["created_at"],
+        updated_at=None,
+    )
+
+
+def get_leave_requests(
+    request_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0,
+    current_user: Optional[dict] = None,
+) -> List[LeaveRequestOut]:
+    db = get_db()
+    collection = db["leaveRequest"]
+
+    filter_query: dict = {}
+    if request_id:
+        filter_query["_id"] = ObjectId(request_id)
+    if user_id:
+        filter_query["user_id"] = ObjectId(user_id)
+    if current_user and current_user.get("role") == "employee":
+        filter_query["user_id"] = ObjectId(current_user["user_id"])  # restrict to own
+
+    cursor = collection.find(filter_query).skip(offset).limit(limit)
+    items: List[LeaveRequestOut] = []
+    for doc in cursor:
+        items.append(
+            LeaveRequestOut(
+                request_id=doc["_id"],
+                user_id=doc["user_id"],
+                start_date=doc["start_date"],
+                end_date=doc["end_date"],
+                reason=doc["reason"],
+                status=doc["status"],
+                approved_by=doc.get("approved_by"),
+                created_at=doc["created_at"],
+                updated_at=doc.get("updated_at"),
+            )
+        )
+    return items
+
+
+def update_leave_request(
+    request_id: str, update_data: LeaveRequestUpdate, current_user: dict
+) -> LeaveRequestOut:
+    db = get_db()
+    collection = db["leaveRequest"]
+    doc = collection.find_one({"_id": ObjectId(request_id)})
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Request Not Found"
+        )
+
+    if current_user["role"] != "manager" and str(doc["user_id"]) != current_user["user_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not access")
+
+    update_fields = update_data.model_dump(exclude_unset=True)
+    if not update_fields:
+        return LeaveRequestOut(
+            request_id=doc["_id"],
+            user_id=doc["user_id"],
+            start_date=doc["start_date"],
+            end_date=doc["end_date"],
+            reason=doc["reason"],
+            status=doc["status"],
+            approved_by=doc.get("approved_by"),
+            created_at=doc["created_at"],
+            updated_at=doc.get("updated_at"),
+        )
+
+    update_fields["updated_at"] = datetime.now()
+    collection.update_one({"_id": ObjectId(request_id)}, {"$set": update_fields})
+    updated = collection.find_one({"_id": ObjectId(request_id)})
+    return LeaveRequestOut(
+        request_id=updated["_id"],
+        user_id=updated["user_id"],
+        start_date=updated["start_date"],
+        end_date=updated["end_date"],
+        reason=updated["reason"],
+        status=updated["status"],
+        approved_by=updated.get("approved_by"),
+        created_at=updated["created_at"],
+        updated_at=updated.get("updated_at"),
+    )
+
+def delete_leave_request(request_id:str,current_user:dict)->dict:
+    db=get_db()
+    collection=db["leaveRequest"]
+    doc= collection.find_one({"_id":ObjectId(request_id)})
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="request NotFound"
+        ) 
+    if current_user["role"]!="manager" and str(doc["user_id"]) != current_user["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail= "not acces"
+            )
+    if collection.delete_one({"_id":ObjectId(request_id)}):
+        return {"message":"request successfully deleted ."}
