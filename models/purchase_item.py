@@ -13,7 +13,7 @@ class PurchaseItemCreate(BaseModel):
     notes: Optional[str] = None
     category: Literal["office_supplies", "equipment", "other"] = "other"
     description: Optional[str] = None
-    created_by: ObjectId
+    created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
@@ -32,12 +32,12 @@ class PurchaseItemUpdate(BaseModel):
 
 class PurchaseItemOut(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    item_id: ObjectId
+    item_id: str
     name: str
     quantity: int
     priority: Literal["low", "medium", "high"]
     status: Literal["pending", "purchased", "canceled"]
-    created_by: ObjectId
+    created_by: str
     created_at: datetime
     updated_at: datetime
     notes: Optional[str] = None

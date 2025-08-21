@@ -32,13 +32,13 @@ def create_purchase_item(data: PurchaseItemCreate, current_user: dict) -> Purcha
     result = collection.insert_one(doc)
 
     return PurchaseItemOut(
-        item_id=result.inserted_id,
+        item_id=str(result.inserted_id),
         name=doc["name"],
         quantity=doc["quantity"],
         priority=doc["priority"],
         status=doc["status"],
         created_at=doc["created_at"],
-        created_by=doc["created_by"],
+        created_by=str(doc["created_by"]),
         updated_at=doc["updated_at"],
         notes=doc.get("notes"),
         category=doc["category"],
@@ -67,12 +67,12 @@ def get_purchase_items(
     for doc in cursor:
         items.append(
             PurchaseItemOut(
-                item_id=doc["_id"],
+                item_id=str(doc["_id"]),
                 name=doc["name"],
                 quantity=doc["quantity"],
                 priority=doc["priority"],
                 status=doc["status"],
-                created_by=doc["created_by"],
+                created_by=str(doc["created_by"]),
                 created_at=doc["created_at"],
                 updated_at=doc["updated_at"],
                 notes=doc.get("notes"),
@@ -96,12 +96,12 @@ def update_purchase_item(item_id: str, update_data: PurchaseItemUpdate, current_
     update_fields = {k: v for k, v in update_data.model_dump(exclude_unset=True).items()}
     if not update_fields:
         return PurchaseItemOut(
-            item_id=doc["_id"],
+            item_id=str(doc["_id"]),
             name=doc["name"],
             quantity=doc["quantity"],
             priority=doc["priority"],
             status=doc["status"],
-            created_by=doc["created_by"],
+            created_by=str(doc["created_by"]),
             created_at=doc["created_at"],
             updated_at=doc["updated_at"],
             notes=doc.get("notes"),
@@ -113,12 +113,12 @@ def update_purchase_item(item_id: str, update_data: PurchaseItemUpdate, current_
     collection.update_one({"_id": ObjectId(item_id)}, {"$set": update_fields})
     updated = collection.find_one({"_id": ObjectId(item_id)})
     return PurchaseItemOut(
-        item_id=updated["_id"],
+        item_id=str(updated["_id"]),
         name=updated["name"],
         quantity=updated["quantity"],
         priority=updated["priority"],
         status=updated["status"],
-        created_by=updated["created_by"],
+        created_by=str(updated["created_by"]),
         created_at=updated["created_at"],
         updated_at=updated["updated_at"],
         notes=updated.get("notes"),
