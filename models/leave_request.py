@@ -1,10 +1,11 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, date
 from typing import Optional, Literal
 from bson import ObjectId
 
 
 class LeaveRequestCreate(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     user_id: ObjectId
     start_date: date
     end_date: date
@@ -14,6 +15,7 @@ class LeaveRequestCreate(BaseModel):
 
 
 class LeaveRequestUpdate(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     reason: Optional[str] = Field(None, max_length=300)
@@ -23,6 +25,7 @@ class LeaveRequestUpdate(BaseModel):
 
 
 class LeaveRequestOut(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     request_id: ObjectId
     user_id: ObjectId
     start_date: date

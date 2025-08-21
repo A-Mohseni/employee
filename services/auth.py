@@ -14,5 +14,5 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
     # In production, you would validate the JWT token here
     return {
         "role": "manager",
-        "user_id": "mock_user_id"
+        "user_id": "507f1f77bcf86cd799439011"  # valid ObjectId string
     }

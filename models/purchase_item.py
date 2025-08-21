@@ -1,10 +1,11 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 from typing import Optional, Literal
 from bson import ObjectId
 
 
 class PurchaseItemCreate(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., max_length=100)
     quantity: int = Field(..., gt=0)
     priority: Literal["low", "medium", "high"] = "low"
@@ -18,6 +19,7 @@ class PurchaseItemCreate(BaseModel):
 
 
 class PurchaseItemUpdate(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     name: Optional[str] = Field(None, max_length=100)
     quantity: Optional[int] = Field(None, gt=0)
     priority: Optional[Literal["low", "medium", "high"]] = None
@@ -29,6 +31,7 @@ class PurchaseItemUpdate(BaseModel):
 
 
 class PurchaseItemOut(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     item_id: ObjectId
     name: str
     quantity: int

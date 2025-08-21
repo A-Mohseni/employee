@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime,date
 from typing import Optional
 from typing import Literal
 from bson import ObjectId
 class report_creat(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     report_id: str
     user_id: str
     date: date
@@ -14,8 +15,9 @@ class report_creat(BaseModel):
     created_at: datetime
 
 class report_update(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     report_id: Optional[str]=None
-    user_id: ObjectId
+    user_id: Optional[str] = None
     date: date
     description: Optional[str]=None
     hours_worked:Optional [int]=None
@@ -26,8 +28,9 @@ class report_update(BaseModel):
 
 
 class report_out(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     report_id: str
-    user_id: ObjectId
+    user_id: str
     date: date
     description: str
     hours_worked: int
