@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from datetime import datetime
 from typing import List, Optional
 
@@ -8,6 +12,7 @@ from models.leave_request import (
     LeaveRequestCreate,
     LeaveRequestOut,
     LeaveRequestUpdate,
+    PyObjectId
 )
 from utils.db import get_db
 
@@ -22,6 +27,12 @@ def create_leave_request(
         )
 
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     leave_collection = db["leaveRequest"]
 
     doc = {
@@ -55,6 +66,12 @@ def get_leave_requests(
     current_user: Optional[dict] = None,
 ) -> List[LeaveRequestOut]:
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     leave_collection = db["leaveRequest"]
 
     filter_query: dict = {}
@@ -88,6 +105,12 @@ def update_leave_request(
     request_id: str, update_data: LeaveRequestUpdate, current_user: dict
 ) -> LeaveRequestOut:
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     leave_collection = db["leaveRequest"]
     doc = leave_collection.find_one({"_id": ObjectId(request_id)})
     if not doc:
@@ -130,6 +153,12 @@ def update_leave_request(
 
 def delete_leave_request(request_id: str, current_user: dict) -> dict:
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     leave_collection = db["leaveRequest"]
     doc = leave_collection.find_one({"_id": ObjectId(request_id)})
     if not doc:

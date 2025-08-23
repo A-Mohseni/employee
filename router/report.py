@@ -1,42 +1,42 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import APIRouter, Body, Depends, HTTPException, status, Path, Query
 from typing import List, Optional
 
-from starlette.status import HTTP_201_CREATED
-from models.report import report_creat,report_update,report_out
+from models.report import report_creat, report_update, report_out
 from services.report import (
-
-    create_report,get_reports,update_report,delete_Reports
+    create_report, get_reports, update_report, delete_Reports
 )
 from services.auth import get_current_user
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-
-@router.post("/",response_model=report_out,status_code=HTTP_201_CREATED)
-async def creat_new_report(
-
-    data:report_creat=Body(...),
-    current_user:dict=Depends(get_current_user)
-
+@router.post("/", response_model=report_out, status_code=status.HTTP_201_CREATED)
+async def create_new_report(
+    data: report_creat = Body(...),
+    current_user: dict = Depends(get_current_user)
 ):
     try:
-        return create_report(data,current_user)
+        return create_report(data, current_user)
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=str(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
         )
+
 
 @router.get("/", response_model=List[report_out])
 async def list_reports(
-        user_id: Optional[str] = Query(None),
-        report_status: Optional[str] = Query(None),
-        limit: int = Query(20, ge=1),
-        offset: int = Query(0, ge=0),
-        current_user: dict = Depends(get_current_user)
-
+    user_id: Optional[str] = Query(None),
+    report_status: Optional[str] = Query(None),
+    limit: int = Query(20, ge=1),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user)
 ):
     try:
         return get_reports(user_id, report_status, limit, offset, current_user)
@@ -49,37 +49,35 @@ async def list_reports(
         )
 
 
-@router.put("/{report_id}",response_model=report_out)
+@router.put("/{report_id}", response_model=report_out)
 async def update_existing_report(
     report_id: str = Path(...),
     update_data: report_update = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-
     try:
         return update_report(report_id, update_data, current_user)
     except HTTPException as e:
         raise e
     except Exception as e:
         raise HTTPException(
-            status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
-        ) 
+        )
 
 
-@router.delete("/{report_id}",status_code=status.HTTP_200_OK)
-async def delet_existing_report(
+@router.delete("/{report_id}", status_code=status.HTTP_200_OK)
+async def delete_existing_report(
     report_id: str = Path(...),
     current_user: dict = Depends(get_current_user)
 ):
-
     try:
         return delete_Reports(report_id, current_user)
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail=str(e)
-        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
         )
 

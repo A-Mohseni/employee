@@ -1,5 +1,9 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Path
-from starlette.status import HTTP_200_OK
+from starlette.status import HTTP_201_CREATED
 from models.user import user_create, user_out, user_update
 from services.user import create_user, update_user, delete_user, get_all_users
 from services.auth import get_current_user
@@ -38,7 +42,7 @@ def create_new_user(user: user_create, current_user: dict = Depends(get_current_
         )
 
 
-@router.put("/{user_id}", response_model=user_out, status_code=HTTP_200_OK)
+@router.put("/{user_id}", response_model=user_out, status_code=status.HTTP_200_OK)
 def update_existing_user(
     user_id: str = Path(..., description="user_id for edit", example="507f1f77bcf86cd799439011"),
     update_data: user_update = Body(..., description="New data to update (names only)"),

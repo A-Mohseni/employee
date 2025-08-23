@@ -1,18 +1,34 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI
-from models import leave_request
-from router.user import router as user_router
-from router.purchase_item import router as purchase_item_router
-from router.report import router as report_router
-from router.leave_request import router as leave_request_router
+from pydantic import BaseModel
 
-app = FastAPI(redoc_url="/redoc")
+app = FastAPI(
+    title="Employee Management API",
+    description="API for managing employee data, leave requests, and more",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 
-app.include_router(user_router)
-app.include_router(purchase_item_router)
-app.include_router(report_router)
-app.include_router(leave_request_router)
+
+class TestModel(BaseModel):
+    name: str
+    age: int
 
 
 @app.get("/")
 def read_root():
     return {"message": "hello welcome to fastapi"}
+
+
+@app.get("/test")
+def test_endpoint():
+    return {"message": "test endpoint working"}
+
+
+@app.post("/test-model")
+def test_model(data: TestModel):
+    return {"received": data}

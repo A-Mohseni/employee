@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Path
 from starlette import status
 from starlette.status import HTTP_201_CREATED

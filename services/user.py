@@ -1,8 +1,12 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from pymongo import errors
 from datetime import datetime
 from bson import ObjectId
 from fastapi import HTTPException, status
-from models.user import user_create, user_out, user_update
+from models.user import user_create, user_out, user_update, PyObjectId
 from utils.db import get_db
 from typing import List
 
@@ -15,6 +19,12 @@ def create_user(user: user_create, current_user: dict):
         )
 
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     user_collection = db["user"]
 
     if user_collection.find_one({"phone_number": user.phone_number}):
@@ -36,8 +46,6 @@ def create_user(user: user_create, current_user: dict):
         "updated_at": now,
     }
 
-   
-
     try:
         user_collection.insert_one(user_data)
     except errors.DuplicateKeyError:
@@ -47,7 +55,7 @@ def create_user(user: user_create, current_user: dict):
         )
 
     return user_out(
-        user_id=str(user_data["_id"]),
+        user_id=user_data["_id"],
         first_name=user_data["first_name"],
         last_name=user_data["last_name"],
         phone_number=user_data["phone_number"],
@@ -70,13 +78,19 @@ def get_all_users(current_user: dict) -> List[user_out]:
         )
 
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     user_collection = db["user"]
     
     try:
         users = list(user_collection.find())
         return [
             user_out(
-                user_id=str(user["_id"]),
+                user_id=user["_id"],
                 first_name=user["first_name"],
                 last_name=user["last_name"],
                 phone_number=user["phone_number"],
@@ -102,6 +116,12 @@ def delete_user(user_id: str, current_user: dict):
         )
 
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     user_collection = db["user"]
     result = user_collection.delete_one({"_id": ObjectId(user_id)})
     if result.deleted_count == 0:
@@ -120,6 +140,12 @@ def update_user(user_id: str, user_data: user_update, current_user: dict):
         )
 
     db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection failed"
+        )
+    
     user_collection = db["user"]
 
     result = user_collection.find_one({"_id": ObjectId(user_id)})
@@ -151,7 +177,7 @@ def update_user(user_id: str, user_data: user_update, current_user: dict):
 
     updated_user = user_collection.find_one({"_id": ObjectId(user_id)})
     return user_out(
-        user_id=str(updated_user["_id"]),
+        user_id=updated_user["_id"],
         first_name=updated_user["first_name"],
         last_name=updated_user["last_name"],
         phone_number=updated_user["phone_number"],
