@@ -3,7 +3,6 @@ from typing import List, Optional
 
 from bson import ObjectId
 from fastapi import HTTPException, status
-from pymongo.synchronous import collection
 
 from models.leave_request import (
     LeaveRequestCreate,
@@ -23,7 +22,7 @@ def create_leave_request(
         )
 
     db = get_db()
-    collection = db["leaveRequest"]
+    leave_collection = db["leaveRequest"]
 
     doc = {
         "user_id": data.user_id,
@@ -33,7 +32,7 @@ def create_leave_request(
         "status": data.status,
         "created_at": datetime.now(),
     }
-    result = collection.insert_one(doc)
+    result = leave_collection.insert_one(doc)
 
     return LeaveRequestOut(
         request_id=result.inserted_id,
@@ -56,7 +55,7 @@ def get_leave_requests(
     current_user: Optional[dict] = None,
 ) -> List[LeaveRequestOut]:
     db = get_db()
-    collection = db["leaveRequest"]
+    leave_collection = db["leaveRequest"]
 
     filter_query: dict = {}
     if request_id:
@@ -66,7 +65,7 @@ def get_leave_requests(
     if current_user and current_user.get("role") == "employee":
         filter_query["user_id"] = ObjectId(current_user["user_id"])  # restrict to own
 
-    cursor = collection.find(filter_query).skip(offset).limit(limit)
+    cursor = leave_collection.find(filter_query).skip(offset).limit(limit)
     items: List[LeaveRequestOut] = []
     for doc in cursor:
         items.append(
@@ -89,8 +88,8 @@ def update_leave_request(
     request_id: str, update_data: LeaveRequestUpdate, current_user: dict
 ) -> LeaveRequestOut:
     db = get_db()
-    collection = db["leaveRequest"]
-    doc = collection.find_one({"_id": ObjectId(request_id)})
+    leave_collection = db["leaveRequest"]
+    doc = leave_collection.find_one({"_id": ObjectId(request_id)})
     if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Request Not Found"
@@ -114,8 +113,8 @@ def update_leave_request(
         )
 
     update_fields["updated_at"] = datetime.now()
-    collection.update_one({"_id": ObjectId(request_id)}, {"$set": update_fields})
-    updated = collection.find_one({"_id": ObjectId(request_id)})
+    leave_collection.update_one({"_id": ObjectId(request_id)}, {"$set": update_fields})
+    updated = leave_collection.find_one({"_id": ObjectId(request_id)})
     return LeaveRequestOut(
         request_id=updated["_id"],
         user_id=updated["user_id"],
@@ -128,19 +127,27 @@ def update_leave_request(
         updated_at=updated.get("updated_at"),
     )
 
-def delete_leave_request(request_id:str,current_user:dict)->dict:
-    db=get_db()
-    collection=db["leaveRequest"]
-    doc= collection.find_one({"_id":ObjectId(request_id)})
+
+def delete_leave_request(request_id: str, current_user: dict) -> dict:
+    db = get_db()
+    leave_collection = db["leaveRequest"]
+    doc = leave_collection.find_one({"_id": ObjectId(request_id)})
     if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="request NotFound"
-        ) 
-    if current_user["role"]!="manager" and str(doc["user_id"]) != current_user["user_id"]:
+        )
+    if current_user["role"] != "manager" and str(doc["user_id"]) != current_user["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail= "not acces"
-            )
-    if collection.delete_one({"_id":ObjectId(request_id)}):
-        return {"message":"request successfully deleted ."}
+            detail="not access"
+        )
+    
+    result = leave_collection.delete_one({"_id": ObjectId(request_id)})
+    if result.deleted_count > 0:
+        return {"message": "request successfully deleted."}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete request"
+        )
