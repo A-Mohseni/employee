@@ -7,6 +7,7 @@ from router.leave_request import router as leave_request_router
 from router.user import router as user_router
 from router.report import router as report_router
 from router.purchase_item import router as purchase_item_router
+from router.checklist import router as checklist_router
 from pydantic import BaseModel
 from fastapi.responses import PlainTextResponse
 import traceback
@@ -39,6 +40,7 @@ app.include_router(user_router)
 app.include_router(leave_request_router)
 app.include_router(report_router)
 app.include_router(purchase_item_router)
+app.include_router(checklist_router)
 
 
 class TestModel(BaseModel):
