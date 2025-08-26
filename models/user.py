@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from bson import ObjectId
 
 
@@ -33,7 +33,7 @@ class user_update(BaseModel):
     phone_number: Optional[str] = None  
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    tokens: Optional[list[str]] = None
+    tokens: Optional[List[str]] = None
     role: Optional[Literal["employee", "manager", "supervisor"]] = None
     password_hash: Optional[str] = None
 
@@ -44,11 +44,11 @@ class user_out(BaseModel):
         json_encoders={ObjectId: str}
     )
     
-    user_id: PyObjectId = Field(default_factory=PyObjectId)
+    user_id: str = Field(default_factory=lambda: str(ObjectId()))
     phone_number: str  
     first_name: str
     last_name: str
-    tokens: Optional[list[str]] = None
+    tokens: Optional[List[str]] = None
     role: Optional[Literal["employee", "manager", "supervisor"]] = None
     created_at: datetime
     updated_at: datetime

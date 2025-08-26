@@ -13,7 +13,7 @@ from services.leave_request import (
     get_leave_requests
 )
 from services.auth import get_current_user
-from typing import Optional
+from typing import Optional, List
 
 router = APIRouter(prefix="/leave_request", tags=["leave_request"])
 
@@ -35,7 +35,7 @@ async def create_new_leave_request(
         )
 
 
-@router.get("/", response_model=list[LeaveRequestOut])
+@router.get("/", response_model=List[LeaveRequestOut])
 async def list_leave_requests(
     user_id: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),

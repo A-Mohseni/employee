@@ -23,7 +23,7 @@ class PurchaseItemCreate(BaseModel):
     notes: Optional[str] = None
     category: Literal["office_supplies", "equipment", "other"] = "other"
     description: Optional[str] = None
-    created_by: Optional[PyObjectId] = None
+    created_by: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
@@ -48,12 +48,12 @@ class PurchaseItemOut(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    item_id: PyObjectId = Field(default_factory=PyObjectId)
+    item_id: str = Field(default_factory=lambda: str(ObjectId()))
     name: str
     quantity: int
     priority: Literal["low", "medium", "high"]
     status: Literal["pending", "purchased", "canceled"]
-    created_by: PyObjectId = Field(default_factory=PyObjectId)
+    created_by: str = Field(default_factory=lambda: str(ObjectId()))
     created_at: datetime
     updated_at: datetime
     notes: Optional[str] = None

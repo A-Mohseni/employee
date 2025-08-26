@@ -16,13 +16,13 @@ class report_creat(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    report_id: PyObjectId = Field(default_factory=PyObjectId)
-    user_id: PyObjectId = Field(default_factory=PyObjectId)
+    report_id: str = Field(default_factory=lambda: str(ObjectId()))
+    user_id: str = Field(default_factory=lambda: str(ObjectId()))
     date: date
     description: str
     hours_worked: int
     status: str
-    approved_by: PyObjectId = Field(default_factory=PyObjectId)
+    approved_by: str = Field(default_factory=lambda: str(ObjectId()))
     created_at: datetime
 
 
@@ -31,13 +31,13 @@ class report_update(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    report_id: Optional[PyObjectId] = None
-    user_id: Optional[PyObjectId] = None
+    report_id: Optional[str] = None
+    user_id: Optional[str] = None
     date: Optional[date] = None
     description: Optional[str] = None
     hours_worked: Optional[int] = None
     status: Optional[str] = None
-    approved_by: Optional[PyObjectId] = None
+    approved_by: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
@@ -46,11 +46,11 @@ class report_out(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    report_id: PyObjectId = Field(default_factory=PyObjectId)
-    user_id: PyObjectId = Field(default_factory=PyObjectId)
+    report_id: str = Field(default_factory=lambda: str(ObjectId()))
+    user_id: str = Field(default_factory=lambda: str(ObjectId()))
     date: date
     description: str
     hours_worked: int
     status: str
-    approved_by: PyObjectId = Field(default_factory=PyObjectId)
+    approved_by: str = Field(default_factory=lambda: str(ObjectId()))
     created_at: datetime

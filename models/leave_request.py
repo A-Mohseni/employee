@@ -16,7 +16,7 @@ class LeaveRequestCreate(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    user_id: PyObjectId = Field(default_factory=PyObjectId)
+    user_id: str = Field(default_factory=lambda: str(ObjectId()))
     start_date: date
     end_date: date
     reason: str = Field(..., max_length=300)
@@ -33,7 +33,7 @@ class LeaveRequestUpdate(BaseModel):
     end_date: Optional[date] = None
     reason: Optional[str] = Field(None, max_length=300)
     status: Optional[Literal["pending", "approved", "rejected"]] = None
-    approved_by: Optional[PyObjectId] = None
+    approved_by: Optional[str] = None
     updated_at: datetime = Field(default_factory=datetime.now)
 
 
@@ -42,12 +42,12 @@ class LeaveRequestOut(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    request_id: PyObjectId = Field(default_factory=PyObjectId)
-    user_id: PyObjectId = Field(default_factory=PyObjectId)
+    request_id: str = Field(default_factory=lambda: str(ObjectId()))
+    user_id: str = Field(default_factory=lambda: str(ObjectId()))
     start_date: date
     end_date: date
     reason: str
     status: Literal["pending", "approved", "rejected"]
-    approved_by: Optional[PyObjectId] = None
+    approved_by: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None

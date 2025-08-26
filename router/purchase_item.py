@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Path, status
 from models.purchase_item import PurchaseItemCreate, PurchaseItemOut, PurchaseItemUpdate
 from services.purchase_item import (
@@ -68,7 +68,7 @@ async def update_existing_purchase_item(
         )
 
 
-@router.delete("/{item_id}", response_model=dict)
+@router.delete("/{item_id}", response_model=Dict[str, Any])
 async def delete_existing_purchase_item(
     item_id: str = Path(...),
     current_user: dict = Depends(get_current_user)

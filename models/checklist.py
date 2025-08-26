@@ -24,13 +24,13 @@ class ChecklistCreate(BaseModel):
         json_encoders={ObjectId: str}
     )
     title: str = Field(..., max_length=100)
-    task_id: PyObjectId = Field(default_factory=PyObjectId)
+    task_id: str = Field(default_factory=lambda: str(ObjectId()))
     description: str
     is_completed: bool = False
-    assigned_to: PyObjectId = Field(default_factory=PyObjectId)
+    assigned_to: str = Field(default_factory=lambda: str(ObjectId()))
     due_date: date
     priority: PriorityEnum = PriorityEnum.medium
-    created_by: PyObjectId = Field(default_factory=PyObjectId)
+    created_by: str = Field(default_factory=lambda: str(ObjectId()))
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
@@ -41,10 +41,10 @@ class ChecklistUpdate(BaseModel):
         json_encoders={ObjectId: str}
     )
     title: Optional[str] = Field(None, max_length=100)
-    task_id: Optional[PyObjectId] = None
+    task_id: Optional[str] = None
     description: Optional[str] = None
     is_completed: Optional[bool] = None
-    assigned_to: Optional[PyObjectId] = None
+    assigned_to: Optional[str] = None
     due_date: Optional[date] = None
     priority: Optional[PriorityEnum] = None
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -55,14 +55,14 @@ class ChecklistOut(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    checklist_id: PyObjectId = Field(default_factory=PyObjectId)
+    checklist_id: str = Field(default_factory=lambda: str(ObjectId()))
     title: str
-    task_id: PyObjectId = Field(default_factory=PyObjectId)
+    task_id: str = Field(default_factory=lambda: str(ObjectId()))
     description: str
     is_completed: bool
-    assigned_to: PyObjectId = Field(default_factory=PyObjectId)
+    assigned_to: str = Field(default_factory=lambda: str(ObjectId()))
     due_date: date
     priority: PriorityEnum
-    created_by: PyObjectId = Field(default_factory=PyObjectId)
+    created_by: str = Field(default_factory=lambda: str(ObjectId()))
     created_at: datetime
     updated_at: datetime
