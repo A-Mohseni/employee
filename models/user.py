@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import datetime
-from typing import Optional, Literal, List
+from typing import Optional, Literal
 from bson import ObjectId
 
 
@@ -11,44 +11,52 @@ class PyObjectId(ObjectId):
         return field_schema
 
 
-class user_create(BaseModel):
+EmployeeRole = Literal["admin1", "admin2", "manager_women", "manager_men", "employee"]
+EmployeeStatus = Literal["active", "inactive"]
+
+
+class employee_create(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    
-    phone_number: str
-    first_name: str
-    last_name: str
-    role: Literal["employee", "manager", "supervisor"]
-    password_hash: str
+
+    employee_id: int = Field(..., ge=10, le=999, description="Unique 2–3 digit employee id")
+    full_name: str = Field(..., min_length=3, max_length=100)
+    role: EmployeeRole
+    status: EmployeeStatus = "active"
+    password_hash: Optional[str] = None
+
+    @field_validator("employee_id")
+    @classmethod
+    def validate_employee_id(cls, v: int) -> int:
+        if not (10 <= v <= 999):
+            raise ValueError("employee_id must be a 2–3 digit integer (10-999)")
+        return v
 
 
-class user_update(BaseModel):
+class employee_update(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    
-    phone_number: Optional[str] = None  
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    tokens: Optional[List[str]] = None
-    role: Optional[Literal["employee", "manager", "supervisor"]] = None
+
+    full_name: Optional[str] = Field(None, min_length=3, max_length=100)
+    role: Optional[EmployeeRole] = None
+    status: Optional[EmployeeStatus] = None
     password_hash: Optional[str] = None
 
 
-class user_out(BaseModel):
+class employee_out(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    
-    user_id: str = Field(default_factory=lambda: str(ObjectId()))
-    phone_number: str  
-    first_name: str
-    last_name: str
-    tokens: Optional[List[str]] = None
-    role: Optional[Literal["employee", "manager", "supervisor"]] = None
+
+    id: str = Field(default_factory=lambda: str(ObjectId()))
+    employee_id: int
+    full_name: str
+    role: EmployeeRole
+    status: EmployeeStatus
     created_at: datetime
     updated_at: datetime

@@ -18,10 +18,10 @@ from utils.db import get_db
 
 
 def create_purchase_item(data: PurchaseItemCreate, current_user: dict) -> PurchaseItemOut:
-    if current_user["role"] not in ["manager", "supervisor"]:
+    if current_user["role"] not in ["admin1", "admin2"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only managers and supervisors can create purchase items",
+            detail="Only Admin1 and Admin2 can create purchase items",
         )
 
     db = get_db()
@@ -120,10 +120,10 @@ def update_purchase_item(
             status_code=status.HTTP_404_NOT_FOUND, detail="Item Not Found"
         )
 
-    if current_user["role"] not in ["manager", "supervisor"]:
+    if current_user["role"] not in ["admin1", "admin2"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only managers and supervisors can update purchase items",
+            detail="Only Admin1 and Admin2 can update purchase items",
         )
 
     update_fields = update_data.model_dump(exclude_unset=True)
@@ -176,10 +176,10 @@ def delete_purchase_item(item_id: str, current_user: dict) -> dict:
             detail="Item Not Found"
         )
 
-    if current_user["role"] not in ["manager", "supervisor"]:
+    if current_user["role"] not in ["admin1", "admin2"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only managers and supervisors can delete purchase items"
+            detail="Only Admin1 and Admin2 can delete purchase items"
         )
 
     result = purchase_collection.delete_one({"_id": ObjectId(item_id)})

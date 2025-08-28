@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
-import jwt
+from jose import jwt, JWTError
 
 SECRET_KEY = "your-secret-key-1234567890"
 ALGORITHM = "HS256"
@@ -20,5 +20,5 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except jwt.PyJWTError:
+    except JWTError:
         return None

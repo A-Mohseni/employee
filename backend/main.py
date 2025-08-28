@@ -8,6 +8,7 @@ from router.user import router as user_router
 from router.report import router as report_router
 from router.purchase_item import router as purchase_item_router
 from router.checklist import router as checklist_router
+from router.auth import router as auth_router
 from pydantic import BaseModel
 from fastapi.responses import PlainTextResponse
 import traceback
@@ -36,6 +37,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 # Register application routers
+app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(leave_request_router)
 app.include_router(report_router)

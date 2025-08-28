@@ -5,18 +5,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import APIRouter, Body, Depends, HTTPException, status, Path, Query
 from typing import List, Optional
 
-from models.report import report_creat, report_update, report_out
+from models.report import report_create, report_update, report_out
 from services.report import (
-    create_report, get_reports, update_report, delete_Reports
+    create_report, get_reports, update_report, delete_Reports, approve_report
 )
-from services.auth import get_current_user
+from services.auth import get_current_user, require_roles
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 @router.post("/", response_model=report_out, status_code=status.HTTP_201_CREATED)
 async def create_new_report(
-    data: report_creat = Body(...),
+    data: report_create = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
     try:
@@ -80,4 +80,16 @@ async def delete_existing_report(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+@router.post("/{report_id}/approve", response_model=report_out)
+async def approve_existing_report(
+    report_id: str = Path(...),
+    current_user: dict = Depends(require_roles("manager_women"))
+):
+    try:
+        return approve_report(report_id, current_user)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+    
 

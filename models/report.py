@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from datetime import datetime, date
+from datetime import datetime
 from typing import Optional, Literal
 from bson import ObjectId
 
@@ -11,19 +11,16 @@ class PyObjectId(ObjectId):
         return field_schema
 
 
-class report_creat(BaseModel):
+ReportStatus = Literal["pending", "approved", "rejected"]
+
+
+class report_create(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    report_id: str = Field(default_factory=lambda: str(ObjectId()))
-    user_id: str = Field(default_factory=lambda: str(ObjectId()))
-    date: date
-    description: str
-    hours_worked: int
-    status: str
-    approved_by: str = Field(default_factory=lambda: str(ObjectId()))
-    created_at: datetime
+    created_by: str = Field(..., description="employee id (ObjectId string)")
+    content: str = Field(..., min_length=3, max_length=2000)
 
 
 class report_update(BaseModel):
@@ -31,14 +28,7 @@ class report_update(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    report_id: Optional[str] = None
-    user_id: Optional[str] = None
-    date: Optional[date] = None
-    description: Optional[str] = None
-    hours_worked: Optional[int] = None
-    status: Optional[str] = None
-    approved_by: Optional[str] = None
-    created_at: Optional[datetime] = None
+    content: Optional[str] = Field(None, min_length=3, max_length=2000)
 
 
 class report_out(BaseModel):
@@ -47,10 +37,9 @@ class report_out(BaseModel):
         json_encoders={ObjectId: str}
     )
     report_id: str = Field(default_factory=lambda: str(ObjectId()))
-    user_id: str = Field(default_factory=lambda: str(ObjectId()))
-    date: date
-    description: str
-    hours_worked: int
-    status: str
-    approved_by: str = Field(default_factory=lambda: str(ObjectId()))
+    created_by: str
+    content: str
+    approved_by: Optional[str] = None
+    status: ReportStatus
     created_at: datetime
+    updated_at: Optional[datetime] = None

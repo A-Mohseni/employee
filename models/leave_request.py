@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, date
-from typing import Optional, Literal, Any
+from typing import Optional, Literal
 from bson import ObjectId
 
 
@@ -11,17 +11,19 @@ class PyObjectId(ObjectId):
         return field_schema
 
 
+LeaveStatus = Literal["pending_phase1", "pending_phase2", "approved", "rejected"]
+
+
 class LeaveRequestCreate(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    user_id: str = Field(default_factory=lambda: str(ObjectId()))
+    created_by: str = Field(..., description="employee id (ObjectId string)")
+    request_date: date = Field(default_factory=lambda: date.today())
     start_date: date
     end_date: date
     reason: str = Field(..., max_length=300)
-    status: Literal["pending", "approved", "rejected"] = "pending"
-    created_at: datetime = Field(default_factory=datetime.now)
 
 
 class LeaveRequestUpdate(BaseModel):
@@ -32,9 +34,6 @@ class LeaveRequestUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     reason: Optional[str] = Field(None, max_length=300)
-    status: Optional[Literal["pending", "approved", "rejected"]] = None
-    approved_by: Optional[str] = None
-    updated_at: datetime = Field(default_factory=datetime.now)
 
 
 class LeaveRequestOut(BaseModel):
@@ -43,11 +42,15 @@ class LeaveRequestOut(BaseModel):
         json_encoders={ObjectId: str}
     )
     request_id: str = Field(default_factory=lambda: str(ObjectId()))
-    user_id: str = Field(default_factory=lambda: str(ObjectId()))
+    created_by: str
+    request_date: date
     start_date: date
     end_date: date
     reason: str
-    status: Literal["pending", "approved", "rejected"]
-    approved_by: Optional[str] = None
+    approval_phase1_by: Optional[str] = None  # admin2 id
+    approval_phase1_at: Optional[datetime] = None
+    approval_phase2_by: Optional[str] = None  # manager_women id
+    approval_phase2_at: Optional[datetime] = None
+    status: LeaveStatus
     created_at: datetime
     updated_at: Optional[datetime] = None

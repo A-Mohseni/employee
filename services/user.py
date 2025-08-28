@@ -6,13 +6,13 @@ from pymongo import errors
 from datetime import datetime
 from bson import ObjectId
 from fastapi import HTTPException, status
-from models.user import user_create, user_out, user_update, PyObjectId
+from models.user import employee_create, employee_out, employee_update, PyObjectId
 from utils.db import get_db
 from typing import List
 
 
-def create_user(user: user_create, current_user: dict):
-    if current_user["role"] != "manager":
+def create_user(user: employee_create, current_user: dict):
+    if current_user["role"] != "admin1":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the administrator can create a new user",
@@ -25,22 +25,17 @@ def create_user(user: user_create, current_user: dict):
             detail="Database connection failed"
         )
     
-    user_collection = db["user"]
-
-    if user_collection.find_one({"phone_number": user.phone_number}):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Phone number is already registered",
-        )
+    user_collection = db["employees"]
+    if user_collection.find_one({"employee_id": user.employee_id}):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="employee_id already exists")
 
     now = datetime.now()
     user_data = {
         "_id": ObjectId(),
-        "phone_number": user.phone_number,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "tokens": [],
+        "employee_id": user.employee_id,
+        "full_name": user.full_name,
         "role": user.role,
+        "status": user.status,
         "password_hash": user.password_hash,
         "created_at": now,
         "updated_at": now,
@@ -54,24 +49,23 @@ def create_user(user: user_create, current_user: dict):
             detail="Error creating user: duplicate phone number",
         )
 
-    return user_out(
-        user_id=user_data["_id"],
-        first_name=user_data["first_name"],
-        last_name=user_data["last_name"],
-        phone_number=user_data["phone_number"],
-        tokens=user_data["tokens"],
+    return employee_out(
+        id=str(user_data["_id"]),
+        employee_id=user_data["employee_id"],
+        full_name=user_data["full_name"],
         role=user_data["role"],
+        status=user_data["status"],
         created_at=user_data["created_at"],
         updated_at=user_data["updated_at"],
     )
 
 
-def get_all_users(current_user: dict) -> List[user_out]:
+def get_all_users(current_user: dict) -> List[employee_out]:
     """
     Get all users from the database
     Only managers can access this endpoint
     """
-    if current_user["role"] != "manager":
+    if current_user["role"] != "admin1":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the administrator can view all users",
@@ -84,18 +78,17 @@ def get_all_users(current_user: dict) -> List[user_out]:
             detail="Database connection failed"
         )
     
-    user_collection = db["user"]
+    user_collection = db["employees"]
     
     try:
         users = list(user_collection.find())
         return [
-            user_out(
-                user_id=user["_id"],
-                first_name=user["first_name"],
-                last_name=user["last_name"],
-                phone_number=user["phone_number"],
-                tokens=user["tokens"],
+            employee_out(
+                id=str(user["_id"]),
+                employee_id=user["employee_id"],
+                full_name=user["full_name"],
                 role=user["role"],
+                status=user["status"],
                 created_at=user["created_at"],
                 updated_at=user["updated_at"],
             )
@@ -109,7 +102,7 @@ def get_all_users(current_user: dict) -> List[user_out]:
 
 
 def delete_user(user_id: str, current_user: dict):
-    if current_user["role"] != "manager":
+    if current_user["role"] != "admin1":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the administrator can delete a user",
@@ -122,7 +115,7 @@ def delete_user(user_id: str, current_user: dict):
             detail="Database connection failed"
         )
     
-    user_collection = db["user"]
+    user_collection = db["employees"]
     result = user_collection.delete_one({"_id": ObjectId(user_id)})
     if result.deleted_count == 0:
         raise HTTPException(
@@ -132,8 +125,8 @@ def delete_user(user_id: str, current_user: dict):
     return {"message": "user deleted"}
 
 
-def update_user(user_id: str, user_data: user_update, current_user: dict):
-    if current_user["role"] != "manager":
+def update_user(user_id: str, user_data: employee_update, current_user: dict):
+    if current_user["role"] != "admin1":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the administrator can update a user",
@@ -146,7 +139,7 @@ def update_user(user_id: str, user_data: user_update, current_user: dict):
             detail="Database connection failed"
         )
     
-    user_collection = db["user"]
+    user_collection = db["employees"]
 
     result = user_collection.find_one({"_id": ObjectId(user_id)})
     if not result:
@@ -157,16 +150,12 @@ def update_user(user_id: str, user_data: user_update, current_user: dict):
 
     update_fields = {"updated_at": datetime.now()}
 
-    if user_data.first_name is not None:
-        update_fields["first_name"] = user_data.first_name
-    if user_data.last_name is not None:
-        update_fields["last_name"] = user_data.last_name
-    if user_data.phone_number is not None:
-        update_fields["phone_number"] = user_data.phone_number
-    if user_data.tokens is not None:
-        update_fields["tokens"] = user_data.tokens
+    if user_data.full_name is not None:
+        update_fields["full_name"] = user_data.full_name
     if user_data.role is not None:
         update_fields["role"] = user_data.role
+    if user_data.status is not None:
+        update_fields["status"] = user_data.status
     if user_data.password_hash is not None:
         update_fields["password_hash"] = user_data.password_hash
 
@@ -176,13 +165,12 @@ def update_user(user_id: str, user_data: user_update, current_user: dict):
     )
 
     updated_user = user_collection.find_one({"_id": ObjectId(user_id)})
-    return user_out(
-        user_id=updated_user["_id"],
-        first_name=updated_user["first_name"],
-        last_name=updated_user["last_name"],
-        phone_number=updated_user["phone_number"],
-        tokens=updated_user["tokens"],
+    return employee_out(
+        id=str(updated_user["_id"]),
+        employee_id=updated_user["employee_id"],
+        full_name=updated_user["full_name"],
         role=updated_user["role"],
+        status=updated_user["status"],
         created_at=updated_user["created_at"],
         updated_at=updated_user["updated_at"],
     )
