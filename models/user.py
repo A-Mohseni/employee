@@ -15,6 +15,32 @@ EmployeeRole = Literal["admin1", "admin2", "manager_women", "manager_men", "empl
 EmployeeStatus = Literal["active", "inactive"]
 
 
+class TokenCreate(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+
+    user_id: str
+    token_hash: str
+    expires_at: datetime
+    is_active: bool = True
+
+
+class TokenOut(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+
+    id: str
+    user_id: str
+    token_hash: str
+    expires_at: datetime
+    is_active: bool
+    created_at: datetime
+
+
 class employee_create(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -53,10 +79,27 @@ class employee_out(BaseModel):
         json_encoders={ObjectId: str}
     )
 
-    id: str = Field(default_factory=lambda: str(ObjectId()))
+    id: str
     employee_id: int
     full_name: str
     role: EmployeeRole
     status: EmployeeStatus
     created_at: datetime
     updated_at: datetime
+
+
+class employee_out_with_token(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+
+    id: str
+    employee_id: int
+    full_name: str
+    role: EmployeeRole
+    status: EmployeeStatus
+    created_at: datetime
+    updated_at: datetime
+    access_token: str
+    token_type: str = "bearer"

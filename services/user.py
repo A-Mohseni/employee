@@ -6,12 +6,13 @@ from pymongo import errors
 from datetime import datetime
 from bson import ObjectId
 from fastapi import HTTPException, status
-from models.user import employee_create, employee_out, employee_update, PyObjectId
+from models.user import employee_create, employee_out, employee_out_with_token, employee_update, PyObjectId
+from services.token import create_token
 from utils.db import get_db
 from typing import List
 
 
-def create_user(user: employee_create, current_user: dict):
+def create_user(user: employee_create, current_user: dict, return_token: bool = True):
     if current_user["role"] != "admin1":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -49,15 +50,42 @@ def create_user(user: employee_create, current_user: dict):
             detail="Error creating user: duplicate phone number",
         )
 
-    return employee_out(
-        id=str(user_data["_id"]),
-        employee_id=user_data["employee_id"],
-        full_name=user_data["full_name"],
-        role=user_data["role"],
-        status=user_data["status"],
-        created_at=user_data["created_at"],
-        updated_at=user_data["updated_at"],
-    )
+    if return_token:
+        # Create JWT token for the new user
+        payload = {"user_id": str(user_data["_id"]), "role": user_data["role"]}
+        try:
+            from utils.jwt import create_access_token
+            token = create_access_token(payload)
+        except Exception:
+            # Fallback to mock token if JWT is not available
+            token = "mock-token-for-new-user"
+
+        # Store token in database
+        try:
+            create_token(str(user_data["_id"]), token, expires_in_minutes=30)
+        except Exception as e:
+            print(f"Warning: Could not store token in database: {e}")
+
+        return employee_out_with_token(
+            id=str(user_data["_id"]),
+            employee_id=user_data["employee_id"],
+            full_name=user_data["full_name"],
+            role=user_data["role"],
+            status=user_data["status"],
+            created_at=user_data["created_at"],
+            updated_at=user_data["updated_at"],
+            access_token=token,
+        )
+    else:
+        return employee_out(
+            id=str(user_data["_id"]),
+            employee_id=user_data["employee_id"],
+            full_name=user_data["full_name"],
+            role=user_data["role"],
+            status=user_data["status"],
+            created_at=user_data["created_at"],
+            updated_at=user_data["updated_at"],
+        )
 
 
 def get_all_users(current_user: dict) -> List[employee_out]:

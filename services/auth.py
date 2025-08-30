@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Literal, Dict, Any
+from services.token import verify_stored_token
 
 # Lazy/optional import to allow running without python-jose when SSL blocks pip
 try:
@@ -31,6 +32,10 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
     user_id: Optional[str] = payload.get("user_id")
     if role not in ["admin1", "admin2", "manager_women", "manager_men", "employee"] or not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+
+    # Verify token is stored in database
+    if not verify_stored_token(credentials.credentials, user_id):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token not found in database")
 
     return {"role": role, "user_id": user_id}
 
