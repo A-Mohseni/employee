@@ -51,16 +51,14 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
         )
 
     if return_token:
-        # Create JWT token for the new user
         payload = {"user_id": str(user_data["_id"]), "role": user_data["role"]}
         try:
             from utils.jwt import create_access_token
-            token = create_access_token(payload)
-        except Exception:
-            # Fallback to mock token if JWT is not available
+            token = create_access_token(payload, subject=str(user_data["_id"]))
+        except Exception as e:
+            print(f"JWT creation failed: {e}")
             token = "mock-token-for-new-user"
 
-        # Store token in database
         try:
             create_token(str(user_data["_id"]), token, expires_in_minutes=30)
         except Exception as e:
@@ -89,10 +87,6 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
 
 
 def get_all_users(current_user: dict) -> List[employee_out]:
-    """
-    Get all users from the database
-    Only managers can access this endpoint
-    """
     if current_user["role"] != "admin1":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

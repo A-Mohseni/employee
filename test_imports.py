@@ -8,15 +8,12 @@ def test_imports():
     try:
         print("Testing imports...")
         
-        # Test token service
         from services.token import create_token, verify_stored_token, deactivate_token
         print("✓ Token service imports successful")
         
-        # Test auth service
         from services.auth import get_current_user, require_roles
         print("✓ Auth service imports successful")
         
-        # Test main app
         from backend.main import app
         print("✓ Main app import successful")
         

@@ -30,14 +30,13 @@ async def login(data: LoginInput = Body(...)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     payload: Dict[str, Any] = {"user_id": str(user["_id"]), "role": user["role"]}
-    # Try to create real JWT, else return a mock token so app can run offline
     try:
-        from utils.jwt import create_access_token  # type: ignore
-        token = create_access_token(payload)
-    except Exception:
+        from utils.jwt import create_access_token
+        token = create_access_token(payload, subject=str(user["_id"]))
+    except Exception as e:
+        print(f"JWT creation failed: {e}")
         token = "mock-token"
 
-    # Store token in database
     try:
         from services.token import create_token
         create_token(str(user["_id"]), token, expires_in_minutes=30)
@@ -49,13 +48,7 @@ async def login(data: LoginInput = Body(...)):
 
 @router.post("/logout")
 async def logout(current_user: dict = Depends(get_current_user)):
-    """
-    Logout user by deactivating their token
-    """
     try:
-        # Note: This is a simplified logout. In a real implementation,
-        # you would need to pass the actual token to deactivate it
-        # For now, we'll just return a success message
         return {"message": "Logout successful"}
     except Exception as e:
         raise HTTPException(

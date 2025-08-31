@@ -3,12 +3,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Literal, Dict, Any
 from services.token import verify_stored_token
 
-# Lazy/optional import to allow running without python-jose when SSL blocks pip
 try:
-    from utils.jwt import verify_token  # type: ignore
+    from utils.jwt import verify_token, TokenError
     _jwt_available = True
 except Exception:
-    verify_token = None  # type: ignore
+    verify_token = None
+    TokenError = None
     _jwt_available = False
 
 security = HTTPBearer(auto_error=False if not _jwt_available else True)
@@ -17,23 +17,22 @@ Role = Literal["admin1", "admin2", "manager_women", "manager_men", "employee"]
 
 
 def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
-    # Fallback: if jwt is unavailable (offline/SSL), allow a mock admin1 to run the app
     if not _jwt_available:
         return {"role": "admin1", "user_id": "507f1f77bcf86cd799439011"}
 
     if not credentials or not credentials.credentials:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing credentials")
 
-    payload = verify_token(credentials.credentials)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    result = verify_token(credentials.credentials)
+    if isinstance(result, TokenError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=result.value)
+    payload = result
 
     role: Optional[str] = payload.get("role")
     user_id: Optional[str] = payload.get("user_id")
     if role not in ["admin1", "admin2", "manager_women", "manager_men", "employee"] or not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
-    # Verify token is stored in database
     if not verify_stored_token(credentials.credentials, user_id):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token not found in database")
 

@@ -86,7 +86,7 @@ def get_leave_requests(
     if user_id:
         filter_query["created_by"] = ObjectId(user_id)
     if current_user and current_user.get("role") == "employee":
-        filter_query["created_by"] = ObjectId(current_user["user_id"])  # restrict to own
+        filter_query["created_by"] = ObjectId(current_user["user_id"])
 
     cursor = leave_collection.find(filter_query).skip(offset).limit(limit)
     items: List[LeaveRequestOut] = []

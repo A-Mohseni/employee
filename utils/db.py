@@ -1,4 +1,3 @@
-# در utils/db.py
 from pymongo import MongoClient
 
 def get_db():

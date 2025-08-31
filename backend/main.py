@@ -28,7 +28,6 @@ app = FastAPI(
 )
 
 
-# Global exception handler to log full tracebacks for easier debugging
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
@@ -36,7 +35,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return PlainTextResponse("Internal Server Error", status_code=500)
 
 
-# Register application routers
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(leave_request_router)
@@ -65,7 +63,6 @@ def test_model(data: TestModel):
     return {"received": data}
 
 
-# Optional: diagnose which route breaks OpenAPI by printing file and line
 @app.on_event("startup")
 async def diagnose_openapi():
     if os.getenv("DEBUG_OPENAPI", "1") != "1":
@@ -73,7 +70,6 @@ async def diagnose_openapi():
     routes = [r for r in app.routes if isinstance(r, APIRoute)]
     for route in routes:
         try:
-            # Build OpenAPI only for this single route
             get_openapi(
                 title="diag",
                 version="1.0.0",

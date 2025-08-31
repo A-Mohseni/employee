@@ -47,9 +47,9 @@ class LeaveRequestOut(BaseModel):
     start_date: date
     end_date: date
     reason: str
-    approval_phase1_by: Optional[str] = None  # admin2 id
+    approval_phase1_by: Optional[str] = None
     approval_phase1_at: Optional[datetime] = None
-    approval_phase2_by: Optional[str] = None  # manager_women id
+    approval_phase2_by: Optional[str] = None
     approval_phase2_at: Optional[datetime] = None
     status: LeaveStatus
     created_at: datetime
