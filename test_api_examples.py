@@ -2,7 +2,7 @@ import requests
 import json
 from utils.password_hash import hash_password
 
-BASE_URL = "http://localhost:8001"
+BASE_URL = "http://localhost:8000"
 
 def test_api_workflow():
     print("🚀 Starting API tests...\n")
