@@ -2,8 +2,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 import hashlib
 from utils.db import get_db
+from services.log import service_exception, logger
 
 
+@service_exception
 def create_token(user_id: str, token: str, expires_in_minutes: int = 30) -> bool:
     try:
         db = get_db()
@@ -25,10 +27,11 @@ def create_token(user_id: str, token: str, expires_in_minutes: int = 30) -> bool
         return result.inserted_id is not None
         
     except Exception as e:
-        print(f"Error creating token: {e}")
+        logger.exception("Error creating token: %s", e)
         return False
 
 
+@service_exception
 def verify_stored_token(token: str, user_id: str) -> bool:
     try:
         db = get_db()
@@ -46,10 +49,11 @@ def verify_stored_token(token: str, user_id: str) -> bool:
         return token_doc is not None
         
     except Exception as e:
-        print(f"Error verifying token: {e}")
+        logger.exception("Error verifying token: %s", e)
         return False
 
 
+@service_exception
 def deactivate_token(token: str, user_id: str) -> bool:
     try:
         db = get_db()
@@ -71,10 +75,11 @@ def deactivate_token(token: str, user_id: str) -> bool:
         return result.modified_count > 0
         
     except Exception as e:
-        print(f"Error deactivating token: {e}")
+        logger.exception("Error deactivating token: %s", e)
         return False
 
 
+@service_exception
 def cleanup_expired_tokens() -> int:
     try:
         db = get_db()
@@ -87,5 +92,5 @@ def cleanup_expired_tokens() -> int:
         return result.deleted_count
         
     except Exception as e:
-        print(f"Error cleaning up expired tokens: {e}")
+        logger.exception("Error cleaning up expired tokens: %s", e)
         return 0

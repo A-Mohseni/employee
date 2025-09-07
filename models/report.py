@@ -19,7 +19,6 @@ class report_create(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    created_by: str = Field(..., description="employee id (ObjectId string)")
     content: str = Field(..., min_length=3, max_length=2000)
 
 
@@ -43,3 +42,4 @@ class report_out(BaseModel):
     status: ReportStatus
     created_at: datetime
     updated_at: Optional[datetime] = None
+    

@@ -4,6 +4,8 @@ from typing import Optional, Literal
 from bson import ObjectId
 
 
+
+
 class PyObjectId(ObjectId):
     @classmethod
     def __get_pydantic_json_schema__(cls, field_schema, field):
@@ -19,7 +21,6 @@ class LeaveRequestCreate(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    created_by: str = Field(..., description="employee id (ObjectId string)")
     request_date: date = Field(default_factory=lambda: date.today())
     start_date: date
     end_date: date

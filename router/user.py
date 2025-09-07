@@ -8,10 +8,12 @@ from models.user import employee_create, employee_out, employee_out_with_token, 
 from services.user import create_user, update_user, delete_user, get_all_users
 from services.auth import require_roles
 from typing import List
+from utils.error_handler import exception_handler
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
 
+@exception_handler
 @router.post("/first-admin", response_model=employee_out_with_token, status_code=status.HTTP_201_CREATED)
 def create_first_admin(user: employee_create):
     try:
@@ -42,6 +44,7 @@ def create_first_admin(user: employee_create):
         )
 
 
+@exception_handler
 @router.get("/", response_model=List[employee_out], status_code=status.HTTP_200_OK)
 def get_users(current_user: dict = Depends(require_roles("admin1"))):
     try:
@@ -55,6 +58,7 @@ def get_users(current_user: dict = Depends(require_roles("admin1"))):
         )
 
 
+@exception_handler
 @router.get("/list", response_model=List[employee_out], status_code=status.HTTP_200_OK)
 def get_users_public():
     try:
@@ -69,6 +73,7 @@ def get_users_public():
         )
 
 
+@exception_handler
 @router.post("/", response_model=employee_out_with_token, status_code=status.HTTP_201_CREATED)
 def create_new_user(user: employee_create, current_user: dict = Depends(require_roles("admin1"))):
     try:
@@ -82,6 +87,7 @@ def create_new_user(user: employee_create, current_user: dict = Depends(require_
         )
 
 
+@exception_handler
 @router.put("/{user_id}", response_model=employee_out, status_code=status.HTTP_200_OK)
 def update_existing_user(
     user_id: str = Path(..., description="User ID to update"),
@@ -99,6 +105,7 @@ def update_existing_user(
         )
 
 
+@exception_handler
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 def delete_existing_user(
     user_id: str = Path(..., description="User ID to delete"),

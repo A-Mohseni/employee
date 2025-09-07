@@ -3,238 +3,162 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import datetime
-from typing import List, Optional
-
+from typing import Optional, List
 from bson import ObjectId
 from fastapi import HTTPException, status
 
-from models.leave_request import (
-    LeaveRequestCreate,
-    LeaveRequestOut,
-    LeaveRequestUpdate,
-    LeaveStatus,
-    PyObjectId,
-)
+from models.leave_request import LeaveRequestCreate, LeaveRequestOut, LeaveRequestUpdate
 from utils.db import get_db
+from services.log import service_exception, logger
 
 
-def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> LeaveRequestOut:
-    if current_user["role"] not in ["employee", "manager_women", "manager_men", "admin1", "admin2"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not access")
-
+@service_exception
+def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
-    leave_collection = db["leave_requests"]
-
+    collection = db["leave_requests"]
+    now = datetime.now()
     doc = {
-        "created_by": ObjectId(data.created_by),
         "request_date": data.request_date,
         "start_date": data.start_date,
         "end_date": data.end_date,
         "reason": data.reason,
-        "approval_phase1_by": None,
-        "approval_phase1_at": None,
-        "approval_phase2_by": None,
-        "approval_phase2_at": None,
         "status": "pending_phase1",
-        "created_at": datetime.now(),
-        "updated_at": None,
+        "created_by": current_user.get("user_id") if current_user else None,
+        "created_at": now,
+        "updated_at": now,
     }
-    result = leave_collection.insert_one(doc)
-
-    return LeaveRequestOut(
-        request_id=str(result.inserted_id),
-        created_by=str(doc["created_by"]),
-        request_date=doc["request_date"],
-        start_date=doc["start_date"],
-        end_date=doc["end_date"],
-        reason=doc["reason"],
-        approval_phase1_by=doc["approval_phase1_by"],
-        approval_phase1_at=doc["approval_phase1_at"],
-        approval_phase2_by=doc["approval_phase2_by"],
-        approval_phase2_at=doc["approval_phase2_at"],
-        status=doc["status"],
-        created_at=doc["created_at"],
-        updated_at=doc["updated_at"],
-    )
+    try:
+        result = collection.insert_one(doc)
+        doc["_id"] = result.inserted_id
+        return doc
+    except Exception as exc:
+        logger.exception("Error creating leave request: %s", exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create leave request")
 
 
+@service_exception
 def get_leave_requests(
-    request_id: Optional[str] = None,
     user_id: Optional[str] = None,
-    limit: int = 20,
+    limit: int = 50,
     offset: int = 0,
-    current_user: Optional[dict] = None,
-) -> List[LeaveRequestOut]:
+    current_user: dict = None,
+) -> List[dict]:
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
-    leave_collection = db["leave_requests"]
-
-    filter_query: dict = {}
-    if request_id:
-        filter_query["_id"] = ObjectId(request_id)
+    collection = db["leave_requests"]
+    query = {}
     if user_id:
-        filter_query["created_by"] = ObjectId(user_id)
-    if current_user and current_user.get("role") == "employee":
-        filter_query["created_by"] = ObjectId(current_user["user_id"])
-
-    cursor = leave_collection.find(filter_query).skip(offset).limit(limit)
-    items: List[LeaveRequestOut] = []
-    for doc in cursor:
-        items.append(
-            LeaveRequestOut(
-                request_id=str(doc["_id"]),
-                created_by=str(doc["created_by"]),
-                request_date=doc["request_date"],
-                start_date=doc["start_date"],
-                end_date=doc["end_date"],
-                reason=doc["reason"],
-                approval_phase1_by=doc.get("approval_phase1_by"),
-                approval_phase1_at=doc.get("approval_phase1_at"),
-                approval_phase2_by=doc.get("approval_phase2_by"),
-                approval_phase2_at=doc.get("approval_phase2_at"),
-                status=doc["status"],
-                created_at=doc["created_at"],
-                updated_at=doc.get("updated_at"),
-            )
-        )
-    return items
+        try:
+            query["created_by"] = int(user_id)
+        except Exception:
+            query["created_by"] = user_id
+    try:
+        cursor = collection.find(query).skip(offset).limit(limit)
+        return list(cursor)
+    except Exception as exc:
+        logger.exception("Error fetching leave requests: %s", exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch leave requests")
 
 
-def update_leave_request(
-    request_id: str, update_data: LeaveRequestUpdate, current_user: dict
-) -> LeaveRequestOut:
+@service_exception
+def update_leave_request(leave_id: str, update_data: LeaveRequestUpdate, current_user: dict = None) -> dict:
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
-    leave_collection = db["leave_requests"]
-    doc = leave_collection.find_one({"_id": ObjectId(request_id)})
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Request Not Found"
-        )
+    collection = db["leave_requests"]
+    existing = collection.find_one({"_id": ObjectId(leave_id)})
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
 
-    if current_user["role"] == "employee" and str(doc["created_by"]) != current_user["user_id"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not access")
-
-    update_fields = update_data.model_dump(exclude_unset=True)
+    update_fields = {k: v for k, v in update_data.dict(exclude_unset=True).items()}
     if not update_fields:
-        return LeaveRequestOut(
-            request_id=doc["_id"],
-            user_id=doc["user_id"],
-            start_date=doc["start_date"],
-            end_date=doc["end_date"],
-            reason=doc["reason"],
-            status=doc["status"],
-            approved_by=doc.get("approved_by"),
-            created_at=doc["created_at"],
-            updated_at=doc.get("updated_at"),
-        )
+        return existing
 
     update_fields["updated_at"] = datetime.now()
-    leave_collection.update_one({"_id": ObjectId(request_id)}, {"$set": update_fields})
-    updated = leave_collection.find_one({"_id": ObjectId(request_id)})
-    return LeaveRequestOut(
-        request_id=str(updated["_id"]),
-        created_by=str(updated["created_by"]),
-        request_date=updated["request_date"],
-        start_date=updated["start_date"],
-        end_date=updated["end_date"],
-        reason=updated["reason"],
-        approval_phase1_by=updated.get("approval_phase1_by"),
-        approval_phase1_at=updated.get("approval_phase1_at"),
-        approval_phase2_by=updated.get("approval_phase2_by"),
-        approval_phase2_at=updated.get("approval_phase2_at"),
-        status=updated["status"],
-        created_at=updated["created_at"],
-        updated_at=updated.get("updated_at"),
-    )
+    try:
+        collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_fields})
+        return collection.find_one({"_id": ObjectId(leave_id)})
+    except Exception as exc:
+        logger.exception("Error updating leave request %s: %s", leave_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update leave request")
 
 
-def delete_leave_request(request_id: str, current_user: dict) -> dict:
+@service_exception
+def delete_leave_request(leave_id: str, current_user: dict) -> dict:
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
-    leave_collection = db["leave_requests"]
-    doc = leave_collection.find_one({"_id": ObjectId(request_id)})
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="request NotFound"
-        )
-    if current_user["role"] == "employee" and str(doc["created_by"]) != current_user["user_id"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="not access"
-        )
-    
-    result = leave_collection.delete_one({"_id": ObjectId(request_id)})
-    if result.deleted_count > 0:
-        return {"message": "request successfully deleted."}
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete request"
-        )
+    collection = db["leave_requests"]
+    existing = collection.find_one({"_id": ObjectId(leave_id)})
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
+    try:
+        res = collection.delete_one({"_id": ObjectId(leave_id)})
+        if res.deleted_count == 0:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete leave request")
+        return {"message": "Leave request deleted"}
+    except Exception as exc:
+        logger.exception("Error deleting leave request %s: %s", leave_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete leave request")
 
 
-def approve_leave_phase1(request_id: str, current_user: dict) -> LeaveRequestOut:
-    if current_user["role"] != "admin2":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Admin2 can approve phase 1")
+# اضافه‌شده: تایید مرحله اول مرخصی
+@service_exception
+def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
+    """
+    Approve leave request for phase 1.
+    - تنها کاربران دارای نقش manager یا hr مجازند.
+    - فیلد status به 'approved_phase1' تغییر می‌کند و approved_by_phase1 و updated_at ذخیره می‌شود.
+    """
     db = get_db()
-    leave_collection = db["leave_requests"]
-    doc = leave_collection.find_one({"_id": ObjectId(request_id)})
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request Not Found")
-    if doc["status"] != "pending_phase1":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state for phase1 approval")
-    leave_collection.update_one(
-        {"_id": ObjectId(request_id)},
-        {"$set": {
-            "approval_phase1_by": ObjectId(current_user["user_id"]),
-            "approval_phase1_at": datetime.now(),
-            "status": "pending_phase2",
-            "updated_at": datetime.now()
-        }}
-    )
-    return get_leave_requests(request_id=request_id, limit=1)[0]
+    collection = db["leave_requests"]
+    existing = collection.find_one({"_id": ObjectId(leave_id)})
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
+
+    user_role = current_user.get("role") if current_user else None
+    allowed_roles = {"manager", "hr"}
+    if user_role not in allowed_roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    try:
+        now = datetime.now()
+        update_payload = {
+            "status": "approved_phase1",
+            "approved_by_phase1": current_user.get("user_id"),
+            "updated_at": now,
+        }
+        collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
+        updated = collection.find_one({"_id": ObjectId(leave_id)})
+        return updated
+    except Exception as exc:
+        logger.exception("Error approving leave (phase1) %s: %s", leave_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to approve leave (phase1)")
 
 
-def approve_leave_phase2(request_id: str, current_user: dict) -> LeaveRequestOut:
-    if current_user["role"] != "manager_women":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Manager Women can approve phase 2")
+@service_exception
+def approve_leave_phase2(leave_id: str, current_user: dict) -> dict:
+    """
+    Approve leave request for phase 2.
+    - فقط کاربران با نقش 'manager' یا 'hr' مجازند.
+    - status به 'approved_phase2' تغییر می‌کند و approved_by_phase2 و updated_at ذخیره می‌شود.
+    """
     db = get_db()
-    leave_collection = db["leave_requests"]
-    doc = leave_collection.find_one({"_id": ObjectId(request_id)})
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request Not Found")
-    if doc["status"] != "pending_phase2":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state for phase2 approval")
-    leave_collection.update_one(
-        {"_id": ObjectId(request_id)},
-        {"$set": {
-            "approval_phase2_by": ObjectId(current_user["user_id"]),
-            "approval_phase2_at": datetime.now(),
-            "status": "approved",
-            "updated_at": datetime.now()
-        }}
-    )
-    return get_leave_requests(request_id=request_id, limit=1)[0]
+    collection = db["leave_requests"]
+    existing = collection.find_one({"_id": ObjectId(leave_id)})
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
+
+    user_role = current_user.get("role") if current_user else None
+    allowed_roles = {"manager", "hr"}
+    if user_role not in allowed_roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    try:
+        now = datetime.now()
+        update_payload = {
+            "status": "approved_phase2",
+            "approved_by_phase2": current_user.get("user_id"),
+            "updated_at": now,
+        }
+        collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
+        updated = collection.find_one({"_id": ObjectId(leave_id)})
+        return updated
+    except Exception as exc:
+        logger.exception("Error approving leave (phase2) %s: %s", leave_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to approve leave (phase2)")

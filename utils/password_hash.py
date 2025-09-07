@@ -1,16 +1,10 @@
-import hashlib
-import secrets
+import bcrypt
 
 def hash_password(password: str) -> str:
-    """Hash a password using SHA-256 with salt"""
-    salt = secrets.token_hex(16)
-    hashed = hashlib.sha256((password + salt).encode()).hexdigest()
-    return f"{salt}${hashed}"
+    """Hash a password using bcrypt"""
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return hashed.decode('utf-8')
 
-def verify_password(password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    try:
-        salt, hash_value = hashed_password.split('$')
-        return hashlib.sha256((password + salt).encode()).hexdigest() == hash_value
-    except:
-        return False
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify a password against its hash using bcrypt"""
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))

@@ -7,26 +7,22 @@ from typing import List, Optional
 from bson import ObjectId
 from fastapi import HTTPException, status
 
-from models.report import report_create, report_update, report_out, ReportStatus, PyObjectId
+from models.report import report_create, report_update, report_out
 from utils.db import get_db
+from services.log import service_exception, logger
 
 
+@service_exception
 def create_report(data: report_create, current_user: dict) -> report_out:
-    if current_user["role"] not in ["employee", "manager_women", "manager_men", "admin1", "admin2"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not access")
+    if current_user.get("role") not in ["employee", "manager_women", "manager_men", "admin1", "admin2"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
     report_collection = db["reports"]
 
     report_data = {
         "_id": ObjectId(),
-        "created_by": ObjectId(data.created_by),
+        "created_by": current_user.get("user_id"),
         "content": data.content,
         "approved_by": None,
         "status": "pending",
@@ -47,6 +43,7 @@ def create_report(data: report_create, current_user: dict) -> report_out:
     )
 
 
+@service_exception
 def get_reports(
     user_id: Optional[str] = None,
     report_status: Optional[str] = None,
@@ -55,21 +52,16 @@ def get_reports(
     current_user: Optional[dict] = None,
 ) -> List[report_out]:
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
     report_collection = db["reports"]
 
     filter_query: dict = {}
-    if user_id:
-        filter_query["created_by"] = ObjectId(user_id)
-    if report_status:
-        filter_query["status"] = report_status
     if current_user and current_user.get("role") == "employee":
-        filter_query["created_by"] = ObjectId(current_user["user_id"])
+        filter_query["created_by"] = current_user.get("user_id")
+    else:
+        if user_id:
+            filter_query["created_by"] = user_id
+        if report_status:
+            filter_query["status"] = report_status
 
     cursor = report_collection.find(filter_query).skip(offset).limit(limit)
     items: List[report_out] = []
@@ -88,25 +80,19 @@ def get_reports(
     return items
 
 
+@service_exception
 def update_report(
     report_id: str, update_data: report_update, current_user: dict
 ) -> report_out:
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
     report_collection = db["reports"]
     existing_report = report_collection.find_one({"_id": ObjectId(report_id)})
     if not existing_report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Report Not Found"
         )
-
-    if current_user["role"] == "employee" and str(existing_report["created_by"]) != current_user["user_id"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not access")
+    if current_user.get("role") == "employee" and str(existing_report["created_by"]) != current_user.get("user_id"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     update_fields = update_data.model_dump(exclude_unset=True)
     if not update_fields:
@@ -134,14 +120,9 @@ def update_report(
     )
 
 
-def delete_Reports(report_id: str, current_user: dict) -> dict:
+@service_exception
+def delete_report(report_id: str, current_user: dict) -> dict:
     db = get_db()
-    if db is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection failed"
-        )
-    
     report_collection = db["reports"]
     doc = report_collection.find_one({"_id": ObjectId(report_id)})
     if not doc:
@@ -149,14 +130,22 @@ def delete_Reports(report_id: str, current_user: dict) -> dict:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Report Not Found"
         )
+    if current_user.get("role") == "employee" and str(doc["created_by"]) != current_user.get("user_id"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    result = report_collection.delete_one({"_id": ObjectId(report_id)})
+    if result.deleted_count > 0:
+        return {"message": "Report successfully deleted."}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete report"
+        )
 
-    if current_user["role"] == "employee" and str(doc["created_by"]) != current_user["user_id"]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not access")
 
-
+@service_exception
 def approve_report(report_id: str, current_user: dict) -> report_out:
-    if current_user["role"] != "manager_women":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only Manager Women can approve reports")
+    if current_user.get("role") not in ["manager_women", "manager_men", "admin1", "admin2"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     db = get_db()
     report_collection = db["reports"]
     doc = report_collection.find_one({"_id": ObjectId(report_id)})
@@ -167,7 +156,7 @@ def approve_report(report_id: str, current_user: dict) -> report_out:
     report_collection.update_one(
         {"_id": ObjectId(report_id)},
         {"$set": {
-            "approved_by": ObjectId(current_user["user_id"]),
+            "approved_by": current_user.get("user_id"),
             "status": "approved",
             "updated_at": datetime.now(),
         }}
@@ -182,12 +171,3 @@ def approve_report(report_id: str, current_user: dict) -> report_out:
         created_at=updated["created_at"],
         updated_at=updated.get("updated_at"),
     )
-
-    result = report_collection.delete_one({"_id": ObjectId(report_id)})
-    if result.deleted_count > 0:
-        return {"message": "Report successfully deleted."}
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete report"
-        )

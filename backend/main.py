@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from router.leave_request import router as leave_request_router
 from router.user import router as user_router
 from router.report import router as report_router
@@ -10,7 +10,7 @@ from router.purchase_item import router as purchase_item_router
 from router.checklist import router as checklist_router
 from router.auth import router as auth_router
 from pydantic import BaseModel
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 import traceback
 import os
 from fastapi.openapi.utils import get_openapi
@@ -27,12 +27,15 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
     print(tb)
-    return PlainTextResponse("Internal Server Error", status_code=500)
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 
 app.include_router(auth_router)

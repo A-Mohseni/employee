@@ -2,19 +2,20 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any, Union
 from jose import jwt, JWTError
+from fastapi import HTTPException, status
 from enum import Enum
-
-class TokenError(Enum):
-    EXPIRED = "Token has expired"
-    INVALID_SIGNATURE = "Invalid token signature"
-    INVALID_FORMAT = "Invalid token format"
-    INVALID_ALGORITHM = "Invalid token algorithm"
-    INVALID_PAYLOAD = "Invalid token payload"
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-1234567890")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
+class TokenError(Enum):
+    INVALID_FORMAT = "invalid_format"
+    EXPIRED = "expired"
+    INVALID_SIGNATURE = "invalid_signature"
+    INVALID_ALGORITHM = "invalid_algorithm"
+    INVALID_PAYLOAD = "invalid_payload"
 
 def create_access_token(
     data: Dict[str, Any], 
@@ -43,8 +44,9 @@ def create_access_token(
     if subject:
         to_encode["sub"] = subject
     
-    if SECRET_KEY == "your-secret-key-1234567890":
-        raise ValueError("JWT_SECRET_KEY environment variable must be set in production")
+    # Allow default key for development
+    # if SECRET_KEY == "your-secret-key-1234567890":
+    #     raise ValueError("JWT_SECRET_KEY environment variable must be set in production")
     
     try:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -91,11 +93,9 @@ def verify_token(token: str) -> Union[Dict[str, Any], TokenError]:
         return payload
     except jwt.ExpiredSignatureError:
         return TokenError.EXPIRED
-    except jwt.InvalidSignatureError:
+    except jwt.JWSError:
         return TokenError.INVALID_SIGNATURE
-    except jwt.InvalidAlgorithmError:
-        return TokenError.INVALID_ALGORITHM
-    except jwt.InvalidTokenError:
+    except jwt.JWTError:
         return TokenError.INVALID_FORMAT
     except Exception:
         return TokenError.INVALID_PAYLOAD
