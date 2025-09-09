@@ -19,7 +19,7 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
             detail="Only the administrator can create a new user",
         )
 
-    db = get_db()
+    db = get_db("employees_db")
     
     user_collection = db["employees"]
     if user_collection.find_one({"employee_id": user.employee_id}):
@@ -88,7 +88,7 @@ def get_all_users(current_user: dict) -> List[employee_out]:
             detail="Only the administrator can view all users",
         )
 
-    db = get_db()
+    db = get_db("employees_db")
     
     user_collection = db["employees"]
     
@@ -120,7 +120,7 @@ def delete_user(user_id: str, current_user: dict):
             detail="Only the administrator can delete a user",
         )
 
-    db = get_db()
+    db = get_db("employees_db")
     
     user_collection = db["employees"]
     result = user_collection.delete_one({"_id": ObjectId(user_id)})
@@ -139,7 +139,7 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
             detail="Only the administrator can update a user",
         )
 
-    db = get_db()
+    db = get_db("employees_db")
     
     user_collection = db["employees"]
 

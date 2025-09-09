@@ -1,31 +1,56 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from utils.db import get_db
 from utils.jwt import create_access_token, verify_token
 from utils.password_hash import verify_password, hash_password
-from services.log import service_exception, logger
+from services.log import logger
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
-@service_exception
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if not credentials or not credentials.credentials:
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None,
+):
+    token_value: str | None = None
+    # 1) Prefer Authorization header (HTTPBearer)
+    if credentials and credentials.credentials:
+        token_value = credentials.credentials
+    # 2) Fallback to HttpOnly cookie named 'access_token' (value may be 'Bearer <token>')
+    if not token_value and request is not None:
+        cookie_val = request.cookies.get("access_token")
+        if cookie_val:
+            parts = cookie_val.split()
+            token_value = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else cookie_val
+    if not token_value:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing credentials")
-    payload = verify_token(credentials.credentials)
+    payload = verify_token(token_value)
     if isinstance(payload, dict):
         return payload
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 def require_roles(*roles):
-    def role_dependency(credentials: HTTPAuthorizationCredentials = Depends(security)):
-        payload = verify_token(credentials.credentials)
+    def role_dependency(
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        request: Request = None,
+    ):
+        # Reuse token extraction logic
+        token_value: str | None = None
+        if credentials and credentials.credentials:
+            token_value = credentials.credentials
+        if not token_value and request is not None:
+            cookie_val = request.cookies.get("access_token")
+            if cookie_val:
+                parts = cookie_val.split()
+                token_value = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else cookie_val
+        if not token_value:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing credentials")
+        payload = verify_token(token_value)
         if not isinstance(payload, dict) or "role" not in payload or payload["role"] not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return payload
     return role_dependency  # فقط تابع را برگردانید، نه Depends(role_dependency)
 
-@service_exception
 def login(employee_id: str, password: str):
     db = get_db()
     employees = db["employees"]
@@ -45,7 +70,6 @@ def login(employee_id: str, password: str):
         "token": token
     }
 
-@service_exception
 def register(employee_id: str, password: str, role: str):
     db = get_db()
     employees = db["employees"]

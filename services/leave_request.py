@@ -9,12 +9,11 @@ from fastapi import HTTPException, status
 
 from models.leave_request import LeaveRequestCreate, LeaveRequestOut, LeaveRequestUpdate
 from utils.db import get_db
-from services.log import service_exception, logger
+from services.log import logger
 
 
-@service_exception
 def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
-    db = get_db()
+    db = get_db("leaves_db")
     collection = db["leave_requests"]
     now = datetime.now()
     doc = {
@@ -36,14 +35,13 @@ def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create leave request")
 
 
-@service_exception
 def get_leave_requests(
     user_id: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
     current_user: dict = None,
 ) -> List[dict]:
-    db = get_db()
+    db = get_db("leaves_db")
     collection = db["leave_requests"]
     query = {}
     if user_id:
@@ -59,9 +57,8 @@ def get_leave_requests(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch leave requests")
 
 
-@service_exception
 def update_leave_request(leave_id: str, update_data: LeaveRequestUpdate, current_user: dict = None) -> dict:
-    db = get_db()
+    db = get_db("leaves_db")
     collection = db["leave_requests"]
     existing = collection.find_one({"_id": ObjectId(leave_id)})
     if not existing:
@@ -80,9 +77,8 @@ def update_leave_request(leave_id: str, update_data: LeaveRequestUpdate, current
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update leave request")
 
 
-@service_exception
 def delete_leave_request(leave_id: str, current_user: dict) -> dict:
-    db = get_db()
+    db = get_db("leaves_db")
     collection = db["leave_requests"]
     existing = collection.find_one({"_id": ObjectId(leave_id)})
     if not existing:
@@ -98,7 +94,6 @@ def delete_leave_request(leave_id: str, current_user: dict) -> dict:
 
 
 # اضافه‌شده: تایید مرحله اول مرخصی
-@service_exception
 def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
     """
     Approve leave request for phase 1.
@@ -131,7 +126,6 @@ def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to approve leave (phase1)")
 
 
-@service_exception
 def approve_leave_phase2(leave_id: str, current_user: dict) -> dict:
     """
     Approve leave request for phase 2.

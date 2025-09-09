@@ -5,10 +5,9 @@ from typing import Optional, List
 
 from models.checklist import ChecklistCreate, ChecklistOut, ChecklistUpdate
 from utils.db import get_db
-from services.log import service_exception, logger
+from services.log import logger
 
 
-@service_exception
 def _map_document_to_checklist_out(document: dict) -> ChecklistOut:
     # mapping simple helper (kept for safety)
     return ChecklistOut(
@@ -26,9 +25,8 @@ def _map_document_to_checklist_out(document: dict) -> ChecklistOut:
     )
 
 
-@service_exception
 def create_checklist(data: ChecklistCreate, current_user: dict) -> ChecklistOut:
-    db = get_db()
+    db = get_db("checklists_db")
     collection = db["checklist"]
 
     now = datetime.now()
@@ -50,7 +48,6 @@ def create_checklist(data: ChecklistCreate, current_user: dict) -> ChecklistOut:
     return _map_document_to_checklist_out(checklist_data)
 
 
-@service_exception
 def get_checklist(
     task_id: Optional[str] = None,
     title: Optional[str] = None,
@@ -59,7 +56,7 @@ def get_checklist(
     offset: int = 0,
     current_user: dict = None,
 ) -> List[ChecklistOut]:
-    db = get_db()
+    db = get_db("checklists_db")
     collection = db["checklist"]
 
     filter_query: dict = {}
@@ -86,11 +83,10 @@ def get_checklist(
     return items
 
 
-@service_exception
 def update_checklist(
     checklist_id: str, update_data: ChecklistUpdate, current_user: dict = None
 ) -> ChecklistOut:
-    db = get_db()
+    db = get_db("checklists_db")
     collection = db["checklist"]
 
     existing = collection.find_one({"_id": ObjectId(checklist_id)})
@@ -122,9 +118,8 @@ def update_checklist(
     return _map_document_to_checklist_out(updated)
 
 
-@service_exception
 def delete_checklist(checklist_id: str, current_user: dict):
-    db = get_db()
+    db = get_db("checklists_db")
     collection = db["checklist"]
     existing = collection.find_one({"_id": ObjectId(checklist_id)})
     if not existing:

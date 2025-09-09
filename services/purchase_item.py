@@ -14,12 +14,11 @@ from models.purchase_item import (
 )
 from services.auth import get_current_user
 from utils.db import get_db
-from services.log import service_exception, logger
+from services.log import logger
 
 
-@service_exception
 def create_purchase_item(data: PurchaseItemCreate, current_user: dict) -> PurchaseItemOut:
-    db = get_db()
+    db = get_db("purchases_db")
     purchase_collection = db["purchaseItems"]
 
     doc = {
@@ -52,14 +51,13 @@ def create_purchase_item(data: PurchaseItemCreate, current_user: dict) -> Purcha
     )
 
 
-@service_exception
 def get_purchase_items(
     item_id: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
     current_user: Optional[dict] = None,
 ) -> List[PurchaseItemOut]:
-    db = get_db()
+    db = get_db("purchases_db")
     purchase_collection = db["purchaseItems"]
 
     filter_query: dict = {}
@@ -87,11 +85,10 @@ def get_purchase_items(
     return items
 
 
-@service_exception
 def update_purchase_item(
     item_id: str, update_data: PurchaseItemUpdate, current_user: dict
 ) -> PurchaseItemOut:
-    db = get_db()
+    db = get_db("purchases_db")
     purchase_collection = db["purchaseItems"]
     doc = purchase_collection.find_one({"_id": ObjectId(item_id)})
     if not doc:
@@ -133,9 +130,8 @@ def update_purchase_item(
     )
 
 
-@service_exception
 def delete_purchase_item(item_id: str, current_user: dict) -> dict:
-    db = get_db()
+    db = get_db("purchases_db")
     purchase_collection = db["purchaseItems"]
     doc = purchase_collection.find_one({"_id": ObjectId(item_id)})
     if not doc:

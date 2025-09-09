@@ -13,81 +13,54 @@ from utils.error_handler import exception_handler
 router = APIRouter(prefix="/employees", tags=["employees"])
 
 
-@exception_handler
 @router.post("/first-admin", response_model=employee_out_with_token, status_code=status.HTTP_201_CREATED)
 def create_first_admin(user: employee_create):
     try:
         from utils.db import get_db
         db = get_db()
-        if db is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database connection failed"
-            )
-        
         user_collection = db["employees"]
         existing_admin = user_collection.find_one({"role": "admin1"})
         if existing_admin:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Admin user already exists. Use regular create endpoint with authentication."
-            )
-        
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin user already exists. Use regular create endpoint with authentication.")
         mock_admin = {"role": "admin1", "user_id": "initial_setup"}
         return create_user(user, mock_admin, return_token=True)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating first admin: {str(e)}",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating first admin: {str(e)}")
 
 
-@exception_handler
 @router.get("/", response_model=List[employee_out], status_code=status.HTTP_200_OK)
 def get_users(current_user: dict = Depends(require_roles("admin1"))):
     try:
         return get_all_users(current_user)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving users: {str(e)}",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error retrieving users: {str(e)}")
 
 
-@exception_handler
 @router.get("/list", response_model=List[employee_out], status_code=status.HTTP_200_OK)
 def get_users_public():
     try:
         mock_admin = {"role": "admin1", "user_id": "test"}
         return get_all_users(mock_admin)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error retrieving users: {str(e)}",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error retrieving users: {str(e)}")
 
 
-@exception_handler
 @router.post("/", response_model=employee_out_with_token, status_code=status.HTTP_201_CREATED)
 def create_new_user(user: employee_create, current_user: dict = Depends(require_roles("admin1"))):
     try:
         return create_user(user, current_user, return_token=True)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error creating user: {str(e)}",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating user: {str(e)}")
 
 
-@exception_handler
 @router.put("/{user_id}", response_model=employee_out, status_code=status.HTTP_200_OK)
 def update_existing_user(
     user_id: str = Path(..., description="User ID to update"),
@@ -96,16 +69,12 @@ def update_existing_user(
 ):
     try:
         return update_user(user_id, user_data, current_user)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error updating user: {str(e)}",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating user: {str(e)}")
 
 
-@exception_handler
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 def delete_existing_user(
     user_id: str = Path(..., description="User ID to delete"),
@@ -113,10 +82,7 @@ def delete_existing_user(
 ):
     try:
         return delete_user(user_id, current_user)
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error deleting user: {str(e)}",
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error deleting user: {str(e)}")

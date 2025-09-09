@@ -23,7 +23,12 @@ def create_new_purchase_items(
     data: PurchaseItemCreate = Body(...),
     current_user: dict = Depends(require_roles("admin1", "admin2"))
 ):
-    return create_purchase_item(data, current_user)
+    try:
+        return create_purchase_item(data, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 @exception_handler
 @router.get("/{item_id}", response_model=PurchaseItemOut)
@@ -31,10 +36,15 @@ async def get_single_purchase_item(
     item_id: str = Path(...),
     current_user: dict = Depends(require_roles("admin1", "admin2")),
 ):
-    items = get_purchase_items(item_id=item_id, limit=1, offset=0, current_user=current_user)
-    if not items:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item Not Found")
-    return items[0]
+    try:
+        items = get_purchase_items(item_id=item_id, limit=1, offset=0, current_user=current_user)
+        if not items:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item Not Found")
+        return items[0]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 @exception_handler
 @router.get("/", response_model=List[PurchaseItemOut])
@@ -43,7 +53,12 @@ async def list_purchase_items(
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(require_roles("admin1", "admin2")),
 ):
-    return get_purchase_items(limit=limit, offset=offset, current_user=current_user)
+    try:
+        return get_purchase_items(limit=limit, offset=offset, current_user=current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 @exception_handler
 @router.put("/{item_id}", response_model=PurchaseItemOut)
@@ -52,7 +67,12 @@ async def update_existing_purchase_item(
     update_data: PurchaseItemUpdate = Body(...),
     current_user: dict = Depends(require_roles("admin1", "admin2"))
 ):
-    return update_purchase_item(item_id=item_id, update_data=update_data, current_user=current_user)
+    try:
+        return update_purchase_item(item_id=item_id, update_data=update_data, current_user=current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 @exception_handler
 @router.delete("/{item_id}", response_model=Dict[str, Any])
@@ -60,5 +80,10 @@ async def delete_existing_purchase_item(
     item_id: str = Path(...),
     current_user: dict = Depends(require_roles("admin1", "admin2"))
 ):
-    return delete_purchase_item(item_id=item_id, current_user=current_user)
+    try:
+        return delete_purchase_item(item_id=item_id, current_user=current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 

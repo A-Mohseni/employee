@@ -15,20 +15,22 @@ from services.leave_request import (
 from services.auth import get_current_user, require_roles
 from typing import Optional, List
 
-from utils.error_handler import exception_handler
 router = APIRouter(prefix="/leave-requests", tags=["leave_requests"])
 
 
-@exception_handler
 @router.post("/", response_model=LeaveRequestOut, status_code=status.HTTP_201_CREATED)
 async def create_new_leave_request(
     data: LeaveRequestCreate = Body(...),
     current_user: dict = Depends(require_roles("employee", "manager_women", "manager_men", "admin1", "admin2"))
 ):
-    return create_leave_request(data, current_user)
+    try:
+        return create_leave_request(data, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-@exception_handler
 @router.get("/", response_model=List[LeaveRequestOut])
 async def list_leave_requests(
     user_id: Optional[str] = Query(None),
@@ -36,43 +38,64 @@ async def list_leave_requests(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
-    return get_leave_requests(
-        user_id=user_id,
-        limit=limit,
-        offset=offset,
-        current_user=current_user
-    )
+    try:
+        return get_leave_requests(
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+            current_user=current_user
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-@exception_handler
 @router.put("/{request_id}", response_model=LeaveRequestOut)
 async def update_existing_leave_request(
     request_id: str = Path(...),
     update_data: LeaveRequestUpdate = Body(...),
     current_user: dict = Depends(get_current_user)
 ):
-    return update_leave_request(request_id, update_data, current_user)
+    try:
+        return update_leave_request(request_id, update_data, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-@exception_handler
 @router.delete("/{request_id}", status_code=status.HTTP_200_OK)
 async def delete_existing_leave_request(
     request_id: str = Path(...),
     current_user: dict = Depends(get_current_user)
 ):
-    return delete_leave_request(request_id, current_user)
+    try:
+        return delete_leave_request(request_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-@exception_handler
 @router.post("/{request_id}/approve-phase1", response_model=LeaveRequestOut)
 async def approve_phase1(request_id: str = Path(...), current_user: dict = Depends(require_roles("admin2"))):
-    return approve_leave_phase1(request_id, current_user)
+    try:
+        return approve_leave_phase1(request_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-@exception_handler
 @router.post("/{request_id}/approve-phase2", response_model=LeaveRequestOut)
 async def approve_phase2(request_id: str = Path(...), current_user: dict = Depends(require_roles("manager_women"))):
-    return approve_leave_phase2(request_id, current_user)
+    try:
+        return approve_leave_phase2(request_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
 

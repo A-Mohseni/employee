@@ -9,15 +9,14 @@ from fastapi import HTTPException, status
 
 from models.report import report_create, report_update, report_out
 from utils.db import get_db
-from services.log import service_exception, logger
+from services.log import logger
 
 
-@service_exception
 def create_report(data: report_create, current_user: dict) -> report_out:
     if current_user.get("role") not in ["employee", "manager_women", "manager_men", "admin1", "admin2"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    db = get_db()
+    db = get_db("reports_db")
     report_collection = db["reports"]
 
     report_data = {
@@ -43,7 +42,6 @@ def create_report(data: report_create, current_user: dict) -> report_out:
     )
 
 
-@service_exception
 def get_reports(
     user_id: Optional[str] = None,
     report_status: Optional[str] = None,
@@ -51,7 +49,7 @@ def get_reports(
     offset: int = 0,
     current_user: Optional[dict] = None,
 ) -> List[report_out]:
-    db = get_db()
+    db = get_db("reports_db")
     report_collection = db["reports"]
 
     filter_query: dict = {}
@@ -80,11 +78,10 @@ def get_reports(
     return items
 
 
-@service_exception
 def update_report(
     report_id: str, update_data: report_update, current_user: dict
 ) -> report_out:
-    db = get_db()
+    db = get_db("reports_db")
     report_collection = db["reports"]
     existing_report = report_collection.find_one({"_id": ObjectId(report_id)})
     if not existing_report:
@@ -120,9 +117,8 @@ def update_report(
     )
 
 
-@service_exception
 def delete_report(report_id: str, current_user: dict) -> dict:
-    db = get_db()
+    db = get_db("reports_db")
     report_collection = db["reports"]
     doc = report_collection.find_one({"_id": ObjectId(report_id)})
     if not doc:
@@ -142,7 +138,6 @@ def delete_report(report_id: str, current_user: dict) -> dict:
         )
 
 
-@service_exception
 def approve_report(report_id: str, current_user: dict) -> report_out:
     if current_user.get("role") not in ["manager_women", "manager_men", "admin1", "admin2"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")

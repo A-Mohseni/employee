@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Body, Depends
+from fastapi import APIRouter, HTTPException, status, Body, Depends, Response
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from utils.error_handler import exception_handler
@@ -19,38 +19,56 @@ class TokenOut(BaseModel):
     user_id: str
 
 
-@exception_handler
 @router.post("/login", response_model=TokenOut)
-def login_route(data: LoginRequest = Body(...)):
-    # Delegate authentication to service
-    login_data = login(data.employee_id, data.password)
-    token = login_data["token"]
-    user_id = login_data["user_id"]
-    role = login_data["role"]
-
-    # Store token in database for revocation support
+def login_route(data: LoginRequest = Body(...), response: Response = None):
     try:
-        from services.token import create_token
-        create_token(user_id, token, expires_in_minutes=30)
+        login_data = login(data.employee_id, data.password)
+        token = login_data["token"]
+        user_id = login_data["user_id"]
+        role = login_data["role"]
+        try:
+            from services.token import create_token
+            create_token(user_id, token, expires_in_minutes=30)
+        except Exception as e:
+            print(f"Warning: Could not store token in database: {e}")
+
+        # Also send token to client via secure HttpOnly cookie and Authorization header
+        if response is not None:
+            try:
+                response.set_cookie(
+                    key="access_token",
+                    value=f"Bearer {token}",
+                    httponly=True,
+                    secure=False,
+                    samesite="lax",
+                    max_age=60*30
+                )
+                response.headers["Authorization"] = f"Bearer {token}"
+            except Exception:
+                pass
+
+        return TokenOut(access_token=token, role=role, user_id=user_id)
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Warning: Could not store token in database: {e}")
-
-    return TokenOut(access_token=token, role=role, user_id=user_id)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-@exception_handler
 @router.post("/logout")
 async def logout(current_user: dict = Depends(get_current_user)):
     try:
         return {"message": "Logout successful"}
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error during logout: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error during logout: {str(e)}")
 
 
-@exception_handler
 @router.post("/register")
 def register_route(data: RegisterRequest = Body(...)):
-    return register(data.employee_id, data.password, data.role)
+    try:
+        return register(data.employee_id, data.password, data.role)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
