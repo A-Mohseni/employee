@@ -51,7 +51,7 @@ class employee_create(BaseModel):
     full_name: str = Field(..., min_length=3, max_length=100)
     role: EmployeeRole
     status: EmployeeStatus = "active"
-    password_hash: Optional[str] = None
+    password: Optional[str] = Field(None, min_length=6, description="Plain text password that will be hashed before storage")
 
     @field_validator("employee_id")
     @classmethod
@@ -70,7 +70,7 @@ class employee_update(BaseModel):
     full_name: Optional[str] = Field(None, min_length=3, max_length=100)
     role: Optional[EmployeeRole] = None
     status: Optional[EmployeeStatus] = None
-    password_hash: Optional[str] = None
+    password: Optional[str] = Field(None, min_length=6, description="Plain text password that will be hashed before storage")
 
 
 class employee_out(BaseModel):

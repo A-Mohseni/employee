@@ -28,9 +28,9 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
 
     now = datetime.now()
     hashed_password: str | None = None
-    if user.password_hash:
+    if user.password:
         try:
-            hashed_password = hash_password(user.password_hash)
+            hashed_password = hash_password(user.password)
         except Exception:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid password provided")
     user_data = {
@@ -165,9 +165,9 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
         update_fields["role"] = user_data.role
     if user_data.status is not None:
         update_fields["status"] = user_data.status
-    if user_data.password_hash is not None:
+    if user_data.password is not None:
         try:
-            update_fields["password_hash"] = hash_password(user_data.password_hash)
+            update_fields["password_hash"] = hash_password(user_data.password)
         except Exception:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid password provided")
 
