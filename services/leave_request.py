@@ -17,9 +17,9 @@ def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
     collection = db["leave_requests"]
     now = datetime.now()
     doc = {
-        "request_date": data.request_date,
-        "start_date": data.start_date,
-        "end_date": data.end_date,
+        "request_date": datetime.combine(data.request_date, datetime.min.time()),
+        "start_date": datetime.combine(data.start_date, datetime.min.time()),
+        "end_date": datetime.combine(data.end_date, datetime.min.time()),
         "reason": data.reason,
         "status": "pending_phase1",
         "created_by": current_user.get("user_id") if current_user else None,

@@ -46,10 +46,14 @@ def require_roles(*roles):
         if not token_value:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing credentials")
         payload = verify_token(token_value)
-        if not isinstance(payload, dict) or "role" not in payload or payload["role"] not in roles:
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        if "role" not in payload:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token format")
+        if payload["role"] not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
         return payload
-    return role_dependency  # فقط تابع را برگردانید، نه Depends(role_dependency)
+    return role_dependency
 
 def login(employee_id: str, password: str):
     db = get_db()
@@ -60,12 +64,12 @@ def login(employee_id: str, password: str):
     except ValueError:
         emp_id = employee_id
     user = employees.find_one({"employee_id": emp_id})
-    if not user or not verify_password(password, user["password_hash"]):
+    if not user or not user.get("password_hash") or not verify_password(password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid employee ID or password")
-    payload = {"user_id": str(emp_id), "role": user["role"]}
-    token = create_access_token(payload, subject=str(emp_id))
+    payload = {"user_id": str(user["_id"]), "role": user["role"]}
+    token = create_access_token(payload, subject=str(user["_id"]))
     return {
-        "user_id": str(emp_id),
+        "user_id": str(user["_id"]),
         "role": user["role"],
         "token": token
     }
@@ -81,9 +85,16 @@ def register(employee_id: str, password: str, role: str):
     if employees.find_one({"employee_id": emp_id}):
         raise HTTPException(status_code=400, detail="Employee ID already exists")
     hashed = hash_password(password)
+    from datetime import datetime
+    from bson import ObjectId
     employees.insert_one({
+        "_id": ObjectId(),
         "employee_id": emp_id,
+        "full_name": f"User {emp_id}",  # Default name
         "password_hash": hashed,
-        "role": role
+        "role": role,
+        "status": "active",
+        "created_at": datetime.now(),
+        "updated_at": datetime.now()
     })
     return {"message": "User registered successfully"}

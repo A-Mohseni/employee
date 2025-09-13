@@ -11,7 +11,7 @@ from services.log import logger
 def _map_document_to_checklist_out(document: dict) -> ChecklistOut:
     # mapping simple helper (kept for safety)
     return ChecklistOut(
-        checklist_id=document["_id"],
+        checklist_id=str(document["_id"]),
         title=document["title"],
         task_id=document["task_id"],
         description=document["description"],
@@ -19,6 +19,8 @@ def _map_document_to_checklist_out(document: dict) -> ChecklistOut:
         assigned_to=document["assigned_to"],
         due_date=document["due_date"],
         priority=document["priority"],
+        role=document.get("role"),
+        role_payload=document.get("role_payload"),
         created_by=document["created_by"],
         created_at=document["created_at"],
         updated_at=document["updated_at"],
@@ -36,8 +38,10 @@ def create_checklist(data: ChecklistCreate, current_user: dict) -> ChecklistOut:
         "description": data.description,
         "is_completed": data.is_completed,
         "assigned_to": data.assigned_to,
-        "due_date": data.due_date,
+        "due_date": datetime.combine(data.due_date, datetime.min.time()),
         "priority": data.priority,
+        "role": data.role,
+        "role_payload": data.role_payload,
         "created_by": current_user.get("user_id"),
         "created_at": now,
         "updated_at": now,
@@ -45,6 +49,7 @@ def create_checklist(data: ChecklistCreate, current_user: dict) -> ChecklistOut:
 
     result = collection.insert_one(checklist_data)
     checklist_data["_id"] = result.inserted_id
+    checklist_data["checklist_id"] = str(result.inserted_id)
     return _map_document_to_checklist_out(checklist_data)
 
 

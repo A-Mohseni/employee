@@ -10,6 +10,7 @@ from models.user import employee_create, employee_out, employee_out_with_token, 
 from services.token import create_token
 from utils.db import get_db
 from typing import List
+from utils.password_hash import hash_password
 
 
 def create_user(user: employee_create, current_user: dict, return_token: bool = True):
@@ -19,20 +20,26 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
             detail="Only the administrator can create a new user",
         )
 
-    db = get_db("employees_db")
+    db = get_db()
     
     user_collection = db["employees"]
     if user_collection.find_one({"employee_id": user.employee_id}):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="employee_id already exists")
 
     now = datetime.now()
+    hashed_password: str | None = None
+    if user.password_hash:
+        try:
+            hashed_password = hash_password(user.password_hash)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid password provided")
     user_data = {
         "_id": ObjectId(),
         "employee_id": user.employee_id,
         "full_name": user.full_name,
         "role": user.role,
         "status": user.status,
-        "password_hash": user.password_hash,
+        "password_hash": hashed_password,
         "created_at": now,
         "updated_at": now,
     }
@@ -88,7 +95,7 @@ def get_all_users(current_user: dict) -> List[employee_out]:
             detail="Only the administrator can view all users",
         )
 
-    db = get_db("employees_db")
+    db = get_db()
     
     user_collection = db["employees"]
     
@@ -120,7 +127,7 @@ def delete_user(user_id: str, current_user: dict):
             detail="Only the administrator can delete a user",
         )
 
-    db = get_db("employees_db")
+    db = get_db()
     
     user_collection = db["employees"]
     result = user_collection.delete_one({"_id": ObjectId(user_id)})
@@ -139,7 +146,7 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
             detail="Only the administrator can update a user",
         )
 
-    db = get_db("employees_db")
+    db = get_db()
     
     user_collection = db["employees"]
 
@@ -159,7 +166,10 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
     if user_data.status is not None:
         update_fields["status"] = user_data.status
     if user_data.password_hash is not None:
-        update_fields["password_hash"] = user_data.password_hash
+        try:
+            update_fields["password_hash"] = hash_password(user_data.password_hash)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid password provided")
 
     user_collection.update_one(
         {"_id": ObjectId(user_id)},

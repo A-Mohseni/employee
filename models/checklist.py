@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, date
-from typing import Optional, Literal
+from typing import Optional, Dict, Any
 from bson import ObjectId
 from enum import Enum
+from models.user import EmployeeRole
 
 
 class PyObjectId(ObjectId):
@@ -30,6 +31,8 @@ class ChecklistCreate(BaseModel):
     assigned_to: str = Field(default_factory=lambda: str(ObjectId()))
     due_date: date
     priority: PriorityEnum = PriorityEnum.medium
+    role: EmployeeRole
+    role_payload: Optional[Dict[str, Any]] = None
     created_by: str = Field(default_factory=lambda: str(ObjectId()))
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -47,6 +50,8 @@ class ChecklistUpdate(BaseModel):
     assigned_to: Optional[str] = None
     due_date: Optional[date] = None
     priority: Optional[PriorityEnum] = None
+    role: Optional[EmployeeRole] = None
+    role_payload: Optional[Dict[str, Any]] = None
     updated_at: datetime = Field(default_factory=datetime.now)
 
 
@@ -63,6 +68,8 @@ class ChecklistOut(BaseModel):
     assigned_to: str = Field(default_factory=lambda: str(ObjectId()))
     due_date: date
     priority: PriorityEnum
+    role: EmployeeRole
+    role_payload: Optional[Dict[str, Any]] = None
     created_by: str = Field(default_factory=lambda: str(ObjectId()))
     created_at: datetime
     updated_at: datetime
