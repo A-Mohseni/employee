@@ -12,10 +12,8 @@ def get_current_user(
     request: Request = None,
 ):
     token_value: str | None = None
-    # 1) Prefer Authorization header (HTTPBearer)
     if credentials and credentials.credentials:
         token_value = credentials.credentials
-    # 2) Fallback to HttpOnly cookie named 'access_token' (value may be 'Bearer <token>')
     if not token_value and request is not None:
         cookie_val = request.cookies.get("access_token")
         if cookie_val:
@@ -34,7 +32,6 @@ def require_roles(*roles):
         credentials: HTTPAuthorizationCredentials = Depends(security),
         request: Request = None,
     ):
-        # Reuse token extraction logic
         token_value: str | None = None
         if credentials and credentials.credentials:
             token_value = credentials.credentials
@@ -58,7 +55,6 @@ def require_roles(*roles):
 def login(employee_id: str, password: str):
     db = get_db()
     employees = db["employees"]
-    # convert employee_id to int if present as string
     try:
         emp_id = int(employee_id)
     except ValueError:
@@ -77,7 +73,6 @@ def login(employee_id: str, password: str):
 def register(employee_id: str, password: str, role: str):
     db = get_db()
     employees = db["employees"]
-    # convert employee_id to int if present as string
     try:
         emp_id = int(employee_id)
     except ValueError:
@@ -90,7 +85,7 @@ def register(employee_id: str, password: str, role: str):
     employees.insert_one({
         "_id": ObjectId(),
         "employee_id": emp_id,
-        "full_name": f"User {emp_id}",  # Default name
+        "full_name": f"User {emp_id}",
         "password_hash": hashed,
         "role": role,
         "status": "active",

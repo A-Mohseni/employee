@@ -47,11 +47,11 @@ class employee_create(BaseModel):
         json_encoders={ObjectId: str}
     )
 
-    employee_id: int = Field(..., ge=10, le=999, description="Unique 2–3 digit employee id")
+    employee_id: int = Field(..., ge=10, le=999)
     full_name: str = Field(..., min_length=3, max_length=100)
     role: EmployeeRole
     status: EmployeeStatus = "active"
-    password: Optional[str] = Field(None, min_length=6, description="Plain text password that will be hashed before storage")
+    password: Optional[str] = Field(None, min_length=6)
 
     @field_validator("employee_id")
     @classmethod
@@ -70,7 +70,7 @@ class employee_update(BaseModel):
     full_name: Optional[str] = Field(None, min_length=3, max_length=100)
     role: Optional[EmployeeRole] = None
     status: Optional[EmployeeStatus] = None
-    password: Optional[str] = Field(None, min_length=6, description="Plain text password that will be hashed before storage")
+    password: Optional[str] = Field(None, min_length=6)
 
 
 class employee_out(BaseModel):
@@ -84,6 +84,22 @@ class employee_out(BaseModel):
     full_name: str
     role: EmployeeRole
     status: EmployeeStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+class employee_out_with_password(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        json_encoders={ObjectId: str}
+    )
+
+    id: str
+    employee_id: int
+    full_name: str
+    role: EmployeeRole
+    status: EmployeeStatus
+    password_hash: str
     created_at: datetime
     updated_at: datetime
 

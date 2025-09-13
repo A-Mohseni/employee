@@ -32,7 +32,6 @@ def login_route(data: LoginRequest = Body(...), response: Response = None):
         except Exception as e:
             print(f"Warning: Could not store token in database: {e}")
 
-        # Also send token to client via secure HttpOnly cookie and Authorization header
         if response is not None:
             try:
                 response.set_cookie(

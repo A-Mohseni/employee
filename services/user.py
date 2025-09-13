@@ -6,11 +6,12 @@ from pymongo import errors
 from datetime import datetime
 from bson import ObjectId
 from fastapi import HTTPException, status
-from models.user import employee_create, employee_out, employee_out_with_token, employee_update, PyObjectId
+from models.user import employee_create, employee_out, employee_out_with_password, employee_out_with_token, employee_update, PyObjectId
 from services.token import create_token
 from utils.db import get_db
 from typing import List
 from utils.password_hash import hash_password
+from utils.helpers import mask_password
 
 
 def create_user(user: employee_create, current_user: dict, return_token: bool = True):
@@ -88,7 +89,7 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
         )
 
 
-def get_all_users(current_user: dict) -> List[employee_out]:
+def get_all_users(current_user: dict) -> List[employee_out_with_password]:
     if current_user.get("role") != "admin1":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -102,12 +103,13 @@ def get_all_users(current_user: dict) -> List[employee_out]:
     try:
         users = list(user_collection.find())
         return [
-            employee_out(
+            employee_out_with_password(
                 id=str(user["_id"]),
                 employee_id=user["employee_id"],
                 full_name=user["full_name"],
                 role=user["role"],
                 status=user["status"],
+                password_hash=mask_password(len(user.get("password_hash", ""))),
                 created_at=user["created_at"],
                 updated_at=user["updated_at"],
             )
@@ -177,12 +179,13 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
     )
 
     updated_user = user_collection.find_one({"_id": ObjectId(user_id)})
-    return employee_out(
+    return employee_out_with_password(
         id=str(updated_user["_id"]),
         employee_id=updated_user["employee_id"],
         full_name=updated_user["full_name"],
         role=updated_user["role"],
         status=updated_user["status"],
+        password_hash=mask_password(len(updated_user.get("password_hash", ""))),
         created_at=updated_user["created_at"],
         updated_at=updated_user["updated_at"],
     )

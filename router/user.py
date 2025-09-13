@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import APIRouter, Depends, HTTPException, status, Body, Path
 from starlette.status import HTTP_201_CREATED
-from models.user import employee_create, employee_out, employee_out_with_token, employee_update
+from models.user import employee_create, employee_out, employee_out_with_password, employee_out_with_token, employee_update
 from services.user import create_user, update_user, delete_user, get_all_users
 from services.auth import require_roles
 from typing import List
@@ -30,7 +30,7 @@ def create_first_admin(user: employee_create):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating first admin: {str(e)}")
 
 
-@router.get("/", response_model=List[employee_out], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[employee_out_with_password], status_code=status.HTTP_200_OK)
 def get_users(current_user: dict = Depends(require_roles("admin1"))):
     try:
         return get_all_users(current_user)
@@ -40,7 +40,7 @@ def get_users(current_user: dict = Depends(require_roles("admin1"))):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error retrieving users: {str(e)}")
 
 
-@router.get("/list", response_model=List[employee_out], status_code=status.HTTP_200_OK)
+@router.get("/list", response_model=List[employee_out_with_password], status_code=status.HTTP_200_OK)
 def get_users_public():
     try:
         mock_admin = {"role": "admin1", "user_id": "test"}
@@ -61,9 +61,9 @@ def create_new_user(user: employee_create, current_user: dict = Depends(require_
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating user: {str(e)}")
 
 
-@router.put("/{user_id}", response_model=employee_out, status_code=status.HTTP_200_OK)
+@router.put("/{user_id}", response_model=employee_out_with_password, status_code=status.HTTP_200_OK)
 def update_existing_user(
-    user_id: str = Path(..., description="User ID to update"),
+    user_id: str = Path(...),
     user_data: employee_update = Body(...),
     current_user: dict = Depends(require_roles("admin1"))
 ):
@@ -77,7 +77,7 @@ def update_existing_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 def delete_existing_user(
-    user_id: str = Path(..., description="User ID to delete"),
+    user_id: str = Path(...),
     current_user: dict = Depends(require_roles("admin1"))
 ):
     try:
