@@ -11,6 +11,7 @@ from services.leave_request import (
     get_leave_requests,
     approve_leave_phase1,
     approve_leave_phase2,
+    reject_leave_request,
 )
 from services.auth import get_current_user, require_roles
 from typing import Optional, List
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/leave-requests", tags=["leave_requests"])
 @router.post("/", response_model=LeaveRequestOut, status_code=status.HTTP_201_CREATED)
 async def create_new_leave_request(
     data: LeaveRequestCreate = Body(...),
-    current_user: dict = Depends(require_roles("employee", "manager_women", "manager_men", "admin1", "admin2"))
+    current_user: dict = Depends(require_roles("employee"))
 ):
     try:
         return create_leave_request(data, current_user)
@@ -34,7 +35,7 @@ async def create_new_leave_request(
 @router.get("/", response_model=List[LeaveRequestOut])
 async def list_leave_requests(
     user_id: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_roles("employee", "manager_women", "manager_men", "admin1", "admin2")),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0)
 ):
@@ -79,7 +80,7 @@ async def delete_existing_leave_request(
 
 
 @router.post("/{request_id}/approve-phase1", response_model=LeaveRequestOut)
-async def approve_phase1(request_id: str = Path(...), current_user: dict = Depends(require_roles("admin2"))):
+async def approve_phase1(request_id: str = Path(...), current_user: dict = Depends(require_roles("manager_women", "manager_men", "admin1", "admin2"))):
     try:
         return approve_leave_phase1(request_id, current_user)
     except HTTPException:
@@ -89,9 +90,23 @@ async def approve_phase1(request_id: str = Path(...), current_user: dict = Depen
 
 
 @router.post("/{request_id}/approve-phase2", response_model=LeaveRequestOut)
-async def approve_phase2(request_id: str = Path(...), current_user: dict = Depends(require_roles("manager_women"))):
+async def approve_phase2(request_id: str = Path(...), current_user: dict = Depends(require_roles("manager_women", "manager_men", "admin1", "admin2"))):
     try:
         return approve_leave_phase2(request_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
+
+
+@router.post("/{request_id}/reject", response_model=LeaveRequestOut)
+async def reject_leave(
+    request_id: str = Path(...),
+    reason: str = Body(None),
+    current_user: dict = Depends(require_roles("manager_women", "manager_men", "admin1", "admin2"))
+):
+    try:
+        return reject_leave_request(request_id, current_user, reason)
     except HTTPException:
         raise
     except Exception as e:

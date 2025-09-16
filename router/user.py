@@ -52,7 +52,7 @@ def get_users_public():
 
 
 @router.post("/", response_model=employee_out_with_token, status_code=status.HTTP_201_CREATED)
-def create_new_user(user: employee_create, current_user: dict = Depends(require_roles("admin1"))):
+def create_new_user(user: employee_create, current_user: dict = Depends(require_roles("admin1", "admin2"))):
     try:
         return create_user(user, current_user, return_token=True)
     except HTTPException:

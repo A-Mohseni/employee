@@ -10,6 +10,25 @@ from fastapi import HTTPException, status
 from models.report import report_create, report_update, report_out
 from utils.db import get_db
 from services.log import logger
+from pymongo import ASCENDING, DESCENDING
+
+
+def create_report_indexes():
+    try:
+        db = get_db("reports_db")
+        report_collection = db["reports"]
+        
+        report_collection.create_index([("created_by", ASCENDING)])
+        report_collection.create_index([("status", ASCENDING)])
+        report_collection.create_index([("created_at", DESCENDING)])
+        report_collection.create_index([("approved_by", ASCENDING)])
+        
+        logger.info("Report indexes created successfully")
+    except Exception as e:
+        logger.error(f"Error creating report indexes: {str(e)}")
+
+
+create_report_indexes()
 
 
 def create_report(data: report_create, current_user: dict) -> report_out:
@@ -49,17 +68,22 @@ def get_reports(
     offset: int = 0,
     current_user: Optional[dict] = None,
 ) -> List[report_out]:
-    db = get_db("reports_db")
+    db = get_db()
     report_collection = db["reports"]
 
     filter_query: dict = {}
     if current_user and current_user.get("role") == "employee":
         filter_query["created_by"] = current_user.get("user_id")
     else:
-        if user_id:
-            filter_query["created_by"] = user_id
-        if report_status:
-            filter_query["status"] = report_status
+        # Manager man/woman see employee reports
+        if current_user and current_user.get("role") in ("manager_women", "manager_men"):
+            if report_status:
+                filter_query["status"] = report_status
+        else:
+            if user_id:
+                filter_query["created_by"] = user_id
+            if report_status:
+                filter_query["status"] = report_status
 
     cursor = report_collection.find(filter_query).skip(offset).limit(limit)
     items: List[report_out] = []

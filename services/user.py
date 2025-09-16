@@ -15,10 +15,10 @@ from utils.helpers import mask_password
 
 
 def create_user(user: employee_create, current_user: dict, return_token: bool = True):
-    if current_user.get("role") != "admin1":
+    if current_user.get("role") not in ("admin1", "admin2"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the administrator can create a new user",
+            detail="Only admin1/admin2 can create a new user",
         )
 
     db = get_db()
@@ -28,6 +28,12 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="employee_id already exists")
 
     now = datetime.now()
+    allowed_assignable_roles = {"employee", "manager_women", "manager_men"}
+    if user.role not in allowed_assignable_roles:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role. Only employee, manager_women, manager_men are assignable.",
+        )
     hashed_password: str | None = None
     if user.password:
         try:

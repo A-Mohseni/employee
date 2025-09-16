@@ -13,7 +13,7 @@ from services.log import logger
 
 
 def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
-    db = get_db("leaves_db")
+    db = get_db()
     collection = db["leave_requests"]
     now = datetime.now()
     doc = {
@@ -41,10 +41,13 @@ def get_leave_requests(
     offset: int = 0,
     current_user: dict = None,
 ) -> List[dict]:
-    db = get_db("leaves_db")
+    db = get_db()
     collection = db["leave_requests"]
     query = {}
-    if user_id:
+    # Employees only see their own; managers/admins can filter
+    if current_user and current_user.get("role") == "employee":
+        query["created_by"] = current_user.get("user_id")
+    elif user_id:
         try:
             query["created_by"] = int(user_id)
         except Exception:
@@ -58,7 +61,7 @@ def get_leave_requests(
 
 
 def update_leave_request(leave_id: str, update_data: LeaveRequestUpdate, current_user: dict = None) -> dict:
-    db = get_db("leaves_db")
+    db = get_db()
     collection = db["leave_requests"]
     existing = collection.find_one({"_id": ObjectId(leave_id)})
     if not existing:
@@ -78,7 +81,7 @@ def update_leave_request(leave_id: str, update_data: LeaveRequestUpdate, current
 
 
 def delete_leave_request(leave_id: str, current_user: dict) -> dict:
-    db = get_db("leaves_db")
+    db = get_db()
     collection = db["leave_requests"]
     existing = collection.find_one({"_id": ObjectId(leave_id)})
     if not existing:
@@ -107,15 +110,16 @@ def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
 
     user_role = current_user.get("role") if current_user else None
-    allowed_roles = {"manager", "hr"}
+    allowed_roles = {"manager_women", "manager_men", "admin1", "admin2"}
     if user_role not in allowed_roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     try:
         now = datetime.now()
         update_payload = {
-            "status": "approved_phase1",
-            "approved_by_phase1": current_user.get("user_id"),
+            "status": "pending_phase2",
+            "approval_phase1_by": current_user.get("user_id"),
+            "approval_phase1_at": now,
             "updated_at": now,
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
@@ -139,15 +143,16 @@ def approve_leave_phase2(leave_id: str, current_user: dict) -> dict:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
 
     user_role = current_user.get("role") if current_user else None
-    allowed_roles = {"manager", "hr"}
+    allowed_roles = {"manager_women", "manager_men", "admin1", "admin2"}
     if user_role not in allowed_roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     try:
         now = datetime.now()
         update_payload = {
-            "status": "approved_phase2",
-            "approved_by_phase2": current_user.get("user_id"),
+            "status": "approved",
+            "approval_phase2_by": current_user.get("user_id"),
+            "approval_phase2_at": now,
             "updated_at": now,
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
@@ -156,3 +161,31 @@ def approve_leave_phase2(leave_id: str, current_user: dict) -> dict:
     except Exception as exc:
         logger.exception("Error approving leave (phase2) %s: %s", leave_id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to approve leave (phase2)")
+
+
+def reject_leave_request(leave_id: str, current_user: dict, reason: Optional[str] = None) -> dict:
+    db = get_db()
+    collection = db["leave_requests"]
+    existing = collection.find_one({"_id": ObjectId(leave_id)})
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
+
+    user_role = current_user.get("role") if current_user else None
+    allowed_roles = {"manager_women", "manager_men", "admin1", "admin2"}
+    if user_role not in allowed_roles:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    try:
+        now = datetime.now()
+        update_payload = {
+            "status": "rejected",
+            "rejected_by": current_user.get("user_id"),
+            "rejected_at": now,
+            "rejection_reason": reason,
+            "updated_at": now,
+        }
+        collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
+        return collection.find_one({"_id": ObjectId(leave_id)})
+    except Exception as exc:
+        logger.exception("Error rejecting leave %s: %s", leave_id, exc)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reject leave request")

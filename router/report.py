@@ -34,7 +34,7 @@ async def list_reports(
     report_status: Optional[str] = Query(None),
     limit: int = Query(20, ge=1),
     offset: int = Query(0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles("employee", "manager_women", "manager_men", "admin1", "admin2"))
 ):
     try:
         return get_reports(user_id, report_status, limit, offset, current_user)
