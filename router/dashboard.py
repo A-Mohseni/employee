@@ -1,4 +1,3 @@
-from sys import exception
 from fastapi import APIRouter,Depends,HTTPException, status
 from models.dashboard import DashboardStats
 from services.dashboard import get_dashboard
