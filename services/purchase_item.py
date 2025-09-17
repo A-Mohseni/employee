@@ -20,7 +20,8 @@ from models.purchase_item import (
 )
 from services.auth import get_current_user
 from utils.db import get_db
-from services.log import logger
+from services.log import logger, create_log
+from models.log import logCreate
 
 
 class PurchaseItemService:
@@ -79,6 +80,18 @@ class PurchaseItemService:
             result = self.collection.insert_one(doc)
             
             logger.info(f"Purchase item created: {result.inserted_id} by user: {current_user.get('user_id')}")
+            try:
+                if current_user and current_user.get("user_id"):
+                    create_log(
+                        logCreate(
+                            action_type="purchase_create",
+                            user_id=current_user["user_id"],
+                            description=f"Created purchase item {str(result.inserted_id)} - {doc['name']}"
+                        ),
+                        current_user,
+                    )
+            except Exception:
+                pass
             
             return self._doc_to_purchase_item_out(doc, result.inserted_id)
             
@@ -182,6 +195,18 @@ class PurchaseItemService:
             updated_doc = self.collection.find_one({"_id": ObjectId(item_id)})
             
             logger.info(f"Purchase item updated: {item_id} by user: {current_user.get('user_id')}")
+            try:
+                if current_user and current_user.get("user_id"):
+                    create_log(
+                        logCreate(
+                            action_type="purchase_update",
+                            user_id=current_user["user_id"],
+                            description=f"Updated purchase item {item_id}"
+                        ),
+                        current_user,
+                    )
+            except Exception:
+                pass
             
             return self._doc_to_purchase_item_out(updated_doc, updated_doc["_id"])
             
@@ -213,6 +238,18 @@ class PurchaseItemService:
             
             if result.deleted_count > 0:
                 logger.info(f"Purchase item deleted: {item_id} by user: {current_user.get('user_id')}")
+                try:
+                    if current_user and current_user.get("user_id"):
+                        create_log(
+                            logCreate(
+                                action_type="purchase_delete",
+                                user_id=current_user["user_id"],
+                                description=f"Deleted purchase item {item_id}"
+                            ),
+                            current_user,
+                        )
+                except Exception:
+                    pass
                 return {"message": "Purchase item successfully deleted"}
             else:
                 raise HTTPException(

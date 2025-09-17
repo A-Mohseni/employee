@@ -9,7 +9,8 @@ from fastapi import HTTPException, status
 
 from models.leave_request import LeaveRequestCreate, LeaveRequestOut, LeaveRequestUpdate
 from utils.db import get_db
-from services.log import logger
+from services.log import logger, create_log
+from models.log import logCreate
 
 
 def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
@@ -29,6 +30,18 @@ def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
     try:
         result = collection.insert_one(doc)
         doc["_id"] = result.inserted_id
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="leave_create",
+                        user_id=current_user["user_id"],
+                        description=f"Created leave request {str(doc['_id'])}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
         return doc
     except Exception as exc:
         logger.exception("Error creating leave request: %s", exc)
@@ -74,7 +87,20 @@ def update_leave_request(leave_id: str, update_data: LeaveRequestUpdate, current
     update_fields["updated_at"] = datetime.now()
     try:
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_fields})
-        return collection.find_one({"_id": ObjectId(leave_id)})
+        updated = collection.find_one({"_id": ObjectId(leave_id)})
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="leave_update",
+                        user_id=current_user["user_id"],
+                        description=f"Updated leave request {leave_id}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
+        return updated
     except Exception as exc:
         logger.exception("Error updating leave request %s: %s", leave_id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update leave request")
@@ -90,6 +116,18 @@ def delete_leave_request(leave_id: str, current_user: dict) -> dict:
         res = collection.delete_one({"_id": ObjectId(leave_id)})
         if res.deleted_count == 0:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete leave request")
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="leave_delete",
+                        user_id=current_user["user_id"],
+                        description=f"Deleted leave request {leave_id}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
         return {"message": "Leave request deleted"}
     except Exception as exc:
         logger.exception("Error deleting leave request %s: %s", leave_id, exc)
@@ -124,6 +162,18 @@ def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
         updated = collection.find_one({"_id": ObjectId(leave_id)})
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="leave_approve_phase1",
+                        user_id=current_user["user_id"],
+                        description=f"Approved phase1 leave request {leave_id}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
         return updated
     except Exception as exc:
         logger.exception("Error approving leave (phase1) %s: %s", leave_id, exc)
@@ -157,6 +207,18 @@ def approve_leave_phase2(leave_id: str, current_user: dict) -> dict:
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
         updated = collection.find_one({"_id": ObjectId(leave_id)})
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="leave_approve_phase2",
+                        user_id=current_user["user_id"],
+                        description=f"Approved phase2 leave request {leave_id}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
         return updated
     except Exception as exc:
         logger.exception("Error approving leave (phase2) %s: %s", leave_id, exc)
@@ -185,7 +247,20 @@ def reject_leave_request(leave_id: str, current_user: dict, reason: Optional[str
             "updated_at": now,
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
-        return collection.find_one({"_id": ObjectId(leave_id)})
+        updated = collection.find_one({"_id": ObjectId(leave_id)})
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="leave_reject",
+                        user_id=current_user["user_id"],
+                        description=f"Rejected leave request {leave_id}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
+        return updated
     except Exception as exc:
         logger.exception("Error rejecting leave %s: %s", leave_id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reject leave request")

@@ -11,6 +11,8 @@ from services.token import create_token
 from utils.db import get_db
 from typing import List
 from utils.password_hash import hash_password
+from services.log import create_log
+from models.log import logCreate
 from utils.helpers import mask_password
 
 
@@ -84,7 +86,7 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
             access_token=token,
         )
     else:
-        return employee_out(
+        result = employee_out(
             id=str(user_data["_id"]),
             employee_id=user_data["employee_id"],
             full_name=user_data["full_name"],
@@ -93,6 +95,19 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
             created_at=user_data["created_at"],
             updated_at=user_data["updated_at"],
         )
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="create_user",
+                        user_id=current_user["user_id"],
+                        description=f"Created user {user_data['employee_id']} - {user_data['full_name']}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
+        return result
 
 
 def get_all_users(current_user: dict) -> List[employee_out_with_password]:
@@ -144,6 +159,18 @@ def delete_user(user_id: str, current_user: dict):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="delete_user",
+                    user_id=current_user["user_id"],
+                    description=f"Deleted user {_id_str if (_id_str := user_id) else user_id}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
     return {"message": "user deleted"}
 
 
@@ -185,7 +212,7 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
     )
 
     updated_user = user_collection.find_one({"_id": ObjectId(user_id)})
-    return employee_out_with_password(
+    result = employee_out_with_password(
         id=str(updated_user["_id"]),
         employee_id=updated_user["employee_id"],
         full_name=updated_user["full_name"],
@@ -195,3 +222,16 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
         created_at=updated_user["created_at"],
         updated_at=updated_user["updated_at"],
     )
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="update_user",
+                    user_id=current_user["user_id"],
+                    description=f"Updated user {updated_user['employee_id']} - {updated_user['full_name']}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
+    return result

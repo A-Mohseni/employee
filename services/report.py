@@ -9,7 +9,8 @@ from fastapi import HTTPException, status
 
 from models.report import report_create, report_update, report_out
 from utils.db import get_db
-from services.log import logger
+from services.log import logger, create_log
+from models.log import logCreate
 from pymongo import ASCENDING, DESCENDING
 
 
@@ -49,6 +50,18 @@ def create_report(data: report_create, current_user: dict) -> report_out:
     }
 
     result = report_collection.insert_one(report_data)
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="report_create",
+                    user_id=current_user["user_id"],
+                    description=f"Created report {str(result.inserted_id)}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
 
     return report_out(
         report_id=str(result.inserted_id),
@@ -130,6 +143,18 @@ def update_report(
     update_fields["updated_at"] = datetime.now()
     report_collection.update_one({"_id": ObjectId(report_id)}, {"$set": update_fields})
     updated_doc = report_collection.find_one({"_id": ObjectId(report_id)})
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="report_update",
+                    user_id=current_user["user_id"],
+                    description=f"Updated report {report_id}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
     return report_out(
         report_id=str(updated_doc["_id"]),
         created_by=str(updated_doc["created_by"]),
@@ -154,6 +179,18 @@ def delete_report(report_id: str, current_user: dict) -> dict:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     result = report_collection.delete_one({"_id": ObjectId(report_id)})
     if result.deleted_count > 0:
+        try:
+            if current_user and current_user.get("user_id"):
+                create_log(
+                    logCreate(
+                        action_type="report_delete",
+                        user_id=current_user["user_id"],
+                        description=f"Deleted report {report_id}"
+                    ),
+                    current_user,
+                )
+        except Exception:
+            pass
         return {"message": "Report successfully deleted."}
     else:
         raise HTTPException(
@@ -181,6 +218,18 @@ def approve_report(report_id: str, current_user: dict) -> report_out:
         }}
     )
     updated = report_collection.find_one({"_id": ObjectId(report_id)})
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="report_approve",
+                    user_id=current_user["user_id"],
+                    description=f"Approved report {report_id}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
     return report_out(
         report_id=str(updated["_id"]),
         created_by=str(updated["created_by"]),

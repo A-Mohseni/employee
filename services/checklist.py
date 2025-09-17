@@ -2,15 +2,15 @@ from datetime import datetime
 from bson import ObjectId
 from fastapi import HTTPException, status
 from typing import Optional, List
-
 from models.checklist import ChecklistCreate, ChecklistOut, ChecklistUpdate
 from utils.db import get_db
-from services.log import logger
+from services.log import logger, create_log
+from models.log import logCreate
 
 
 def _map_document_to_checklist_out(document: dict) -> ChecklistOut:
     # mapping simple helper (kept for safety)
-    return ChecklistOut(
+    result = ChecklistOut(
         checklist_id=str(document["_id"]),
         title=document["title"],
         task_id=document["task_id"],
@@ -25,7 +25,7 @@ def _map_document_to_checklist_out(document: dict) -> ChecklistOut:
         created_at=document["created_at"],
         updated_at=document["updated_at"],
     )
-
+    return result
 
 def create_checklist(data: ChecklistCreate, current_user: dict) -> ChecklistOut:
     db = get_db("checklists_db")
@@ -50,6 +50,18 @@ def create_checklist(data: ChecklistCreate, current_user: dict) -> ChecklistOut:
     result = collection.insert_one(checklist_data)
     checklist_data["_id"] = result.inserted_id
     checklist_data["checklist_id"] = str(result.inserted_id)
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="checklist_create",
+                    user_id=current_user["user_id"],
+                    description=f"Created checklist {checklist_data['checklist_id']} - {checklist_data['title']}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
     return _map_document_to_checklist_out(checklist_data)
 
 
@@ -120,6 +132,18 @@ def update_checklist(
 
     collection.update_one({"_id": ObjectId(checklist_id)}, {"$set": update_fields})
     updated = collection.find_one({"_id": ObjectId(checklist_id)})
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="checklist_update",
+                    user_id=current_user["user_id"],
+                    description=f"Updated checklist {checklist_id}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
     return _map_document_to_checklist_out(updated)
 
 
@@ -143,5 +167,17 @@ def delete_checklist(checklist_id: str, current_user: dict):
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
     collection.delete_one({"_id": ObjectId(checklist_id)})
+    try:
+        if current_user and current_user.get("user_id"):
+            create_log(
+                logCreate(
+                    action_type="checklist_delete",
+                    user_id=current_user["user_id"],
+                    description=f"Deleted checklist {checklist_id}"
+                ),
+                current_user,
+            )
+    except Exception:
+        pass
     return {"message": "Checklist successfully deleted."}
 
