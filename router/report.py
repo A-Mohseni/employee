@@ -18,7 +18,7 @@ from utils.error_handler import exception_handler
 @router.post("/", response_model=report_out, status_code=status.HTTP_201_CREATED)
 async def create_new_report(
     data: report_create = Body(...),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles("employee"))
 ):
     try:
         return create_report(data, current_user)
@@ -48,7 +48,7 @@ async def list_reports(
 async def update_existing_report(
     report_id: str = Path(...),
     update_data: report_update = Body(...),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles("employee"))
 ):
     try:
         return update_report(report_id, update_data, current_user)
@@ -61,7 +61,7 @@ async def update_existing_report(
 @router.delete("/{report_id}", status_code=status.HTTP_200_OK)
 async def delete_existing_report(
     report_id: str = Path(...),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_roles("employee"))
 ):
     try:
         return delete_report(report_id, current_user)

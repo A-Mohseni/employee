@@ -13,7 +13,7 @@ router = APIRouter(prefix="/checklists", tags=["checklists"])
 @router.post("/", response_model=ChecklistOut, status_code=status.HTTP_201_CREATED)
 async def create_new_checklist(
         data: ChecklistCreate = Body(...),
-        current_user: dict = Depends(require_roles("manager_women", "manager_men", "admin1", "admin2"))
+        current_user: dict = Depends(require_roles("manager_women", "manager_men"))
 ):
     return create_checklist(data, current_user)
 
@@ -26,7 +26,7 @@ async def list_checklists(
         description: Optional[str] = Query(None),
         limit: int = Query(20, ge=1, le=100),
         offset: int = Query(0, ge=0),
-        current_user: dict = Depends(get_current_user)
+        current_user: dict = Depends(require_roles("admin1", "admin2", "manager_women", "manager_men"))
 ):
     return get_checklist(
         task_id=task_id,
@@ -43,7 +43,7 @@ async def list_checklists(
 async def update_existing_checklist(
         checklist_id: str = Path(..., description="checklist id"),
         update_data: ChecklistUpdate = Body(...),
-        current_user: dict = Depends(get_current_user)
+        current_user: dict = Depends(require_roles("manager_women", "manager_men"))
 ):
     return update_checklist(checklist_id, update_data, current_user)
 
@@ -52,7 +52,7 @@ async def update_existing_checklist(
 @router.delete("/{checklist_id}", response_model=Dict[str, Any])
 async def delete_existing_checklist(
         checklist_id: str = Path(..., description="checklist id"),
-        current_user: dict = Depends(get_current_user)
+        current_user: dict = Depends(require_roles("manager_women", "manager_men"))
 ):
     return delete_checklist(checklist_id, current_user)
 

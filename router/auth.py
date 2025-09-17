@@ -66,7 +66,13 @@ async def logout(current_user: dict = Depends(get_current_user)):
 @router.post("/register")
 def register_route(data: RegisterRequest = Body(...)):
     try:
-        return register(data.employee_id, data.password, data.role)
+        return register(
+            employee_id=data.employee_id,
+            password=data.password,
+            role=data.role,
+            phone=data.phone,
+            birthdate=data.birthdate,
+        )
     except HTTPException:
         raise
     except Exception as e:

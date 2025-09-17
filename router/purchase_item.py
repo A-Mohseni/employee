@@ -47,7 +47,7 @@ router = APIRouter(
 )
 async def create_new_purchase_item(
     data: PurchaseItemCreate = Body(..., description="Purchase item information"),
-    current_user: dict = Depends(require_roles("admin1", "admin2"))
+    current_user: dict = Depends(require_roles("manager_women", "manager_men"))
 ):
     try:
         return create_purchase_item(data, current_user)
@@ -69,7 +69,7 @@ async def create_new_purchase_item(
 )
 async def get_single_purchase_item(
     item_id: str = Path(..., description="Purchase item ID"),
-    current_user: dict = Depends(require_roles("admin1", "admin2"))
+    current_user: dict = Depends(require_roles("admin1", "admin2", "manager_women", "manager_men"))
 ):
     try:
         return purchase_item_service.get_purchase_item_by_id(item_id, current_user)
@@ -113,7 +113,7 @@ async def list_purchase_items(
     min_price: Optional[float] = Query(None, ge=0, description="Minimum price"),
     max_price: Optional[float] = Query(None, ge=0, description="Maximum price"),
     
-    current_user: dict = Depends(require_roles("admin1", "admin2"))
+    current_user: dict = Depends(require_roles("admin1", "admin2", "manager_women", "manager_men"))
 ):
     try:
         filters = PurchaseItemFilter(
@@ -159,7 +159,7 @@ async def list_purchase_items(
 async def update_existing_purchase_item(
     item_id: str = Path(..., description="Purchase item ID"),
     update_data: PurchaseItemUpdate = Body(..., description="Update information"),
-    current_user: dict = Depends(require_roles("admin1", "admin2"))
+    current_user: dict = Depends(require_roles("manager_women", "manager_men"))
 ):
     try:
         return update_purchase_item(item_id=item_id, update_data=update_data, current_user=current_user)
@@ -181,7 +181,7 @@ async def update_existing_purchase_item(
 )
 async def delete_existing_purchase_item(
     item_id: str = Path(..., description="Purchase item ID"),
-    current_user: dict = Depends(require_roles("admin1", "admin2"))
+    current_user: dict = Depends(require_roles("manager_women", "manager_men"))
 ):
     try:
         return delete_purchase_item(item_id=item_id, current_user=current_user)

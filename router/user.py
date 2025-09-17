@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body, Path
 from starlette.status import HTTP_201_CREATED
 from models.user import employee_create, employee_out, employee_out_with_password, employee_out_with_token, employee_update
 from services.user import create_user, update_user, delete_user, get_all_users
-from services.auth import require_roles
+from services.auth import require_roles, get_current_user
 from typing import List
 from utils.error_handler import exception_handler
 
@@ -31,7 +31,7 @@ def create_first_admin(user: employee_create):
 
 
 @router.get("/", response_model=List[employee_out_with_password], status_code=status.HTTP_200_OK)
-def get_users(current_user: dict = Depends(require_roles("admin1"))):
+def get_users(current_user: dict = Depends(require_roles("admin1", "admin2"))):
     try:
         return get_all_users(current_user)
     except HTTPException:
@@ -65,7 +65,7 @@ def create_new_user(user: employee_create, current_user: dict = Depends(require_
 def update_existing_user(
     user_id: str = Path(...),
     user_data: employee_update = Body(...),
-    current_user: dict = Depends(require_roles("admin1"))
+    current_user: dict = Depends(require_roles("admin1", "admin2"))
 ):
     try:
         return update_user(user_id, user_data, current_user)
@@ -78,7 +78,7 @@ def update_existing_user(
 @router.delete("/{user_id}", status_code=status.HTTP_200_OK)
 def delete_existing_user(
     user_id: str = Path(...),
-    current_user: dict = Depends(require_roles("admin1"))
+    current_user: dict = Depends(require_roles("admin1", "admin2"))
 ):
     try:
         return delete_user(user_id, current_user)
@@ -86,3 +86,16 @@ def delete_existing_user(
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error deleting user: {str(e)}")
+
+
+@router.put("/me", response_model=employee_out_with_password, status_code=status.HTTP_200_OK)
+def update_me(
+    user_data: employee_update = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        return update_user(current_user["user_id"], user_data, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error updating profile: {str(e)}")

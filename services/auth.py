@@ -70,7 +70,7 @@ def login(employee_id: str, password: str):
         "token": token
     }
 
-def register(employee_id: str, password: str, role: str):
+def register(employee_id: str, password: str, role: str, phone: str, birthdate: str):
     db = get_db()
     employees = db["employees"]
     try:
@@ -89,6 +89,8 @@ def register(employee_id: str, password: str, role: str):
         "password_hash": hashed,
         "role": role,
         "status": "active",
+        "phone": phone,
+        "birthdate": birthdate,
         "created_at": datetime.now(),
         "updated_at": datetime.now()
     })
