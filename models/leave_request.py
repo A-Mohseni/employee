@@ -22,8 +22,8 @@ class LeaveRequestCreate(BaseModel):
         json_encoders={ObjectId: str}
     )
     request_date: date = Field(default_factory=lambda: date.today())
-    start_date: date
-    end_date: date
+    start_date: datetime = Field(default_factory=lambda: datetime.now())
+    end_date: datetime = Field(default_factory=lambda: datetime.now())
     reason: str = Field(..., max_length=300)
 
 

@@ -1,11 +1,27 @@
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from utils.db import get_db
-from utils.jwt import create_access_token, verify_token
+from utils.jwt import create_access_token, verify_token, TokenError
 from utils.password_hash import verify_password, hash_password
 from services.log import logger
 
 security = HTTPBearer(auto_error=False)
+
+def _normalize_token(raw_token: str | None) -> str | None:
+    if not raw_token:
+        return raw_token
+    token = raw_token.strip()
+    # Remove surrounding quotes if present
+    if len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
+        token = token[1:-1].strip()
+    # Handle values that still include the Bearer prefix
+    lower = token.lower()
+    if lower.startswith("bearer "):
+        token = token.split(None, 1)[1].strip()
+    # Remove quotes again in case they were around the inner token
+    if len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
+        token = token[1:-1].strip()
+    return token
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -13,19 +29,32 @@ def get_current_user(
 ):
     token_value: str | None = None
     if credentials and credentials.credentials:
-        token_value = credentials.credentials
+        token_value = _normalize_token(credentials.credentials)
     if not token_value and request is not None:
         cookie_val = request.cookies.get("access_token")
         if cookie_val:
             parts = cookie_val.split()
-            token_value = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else cookie_val
+            token_candidate = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else cookie_val
+            token_value = _normalize_token(token_candidate)
     if not token_value:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing credentials")
     payload = verify_token(token_value)
     if isinstance(payload, dict):
         return payload
-    else:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    # Map specific token errors to clearer messages
+    error_detail = "Invalid token"
+    if isinstance(payload, TokenError):
+        if payload == TokenError.EXPIRED:
+            error_detail = "Token expired"
+        elif payload == TokenError.INVALID_SIGNATURE:
+            error_detail = "Invalid token signature"
+        elif payload == TokenError.INVALID_ALGORITHM:
+            error_detail = "Invalid token algorithm"
+        elif payload == TokenError.INVALID_FORMAT:
+            error_detail = "Invalid token format"
+        elif payload == TokenError.INVALID_PAYLOAD:
+            error_detail = "Invalid token payload"
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error_detail)
 
 def require_roles(*roles):
     def role_dependency(
@@ -34,17 +63,30 @@ def require_roles(*roles):
     ):
         token_value: str | None = None
         if credentials and credentials.credentials:
-            token_value = credentials.credentials
+            token_value = _normalize_token(credentials.credentials)
         if not token_value and request is not None:
             cookie_val = request.cookies.get("access_token")
             if cookie_val:
                 parts = cookie_val.split()
-                token_value = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else cookie_val
+                token_candidate = parts[1] if len(parts) == 2 and parts[0].lower() == "bearer" else cookie_val
+                token_value = _normalize_token(token_candidate)
         if not token_value:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing credentials")
         payload = verify_token(token_value)
         if not isinstance(payload, dict):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+            error_detail = "Invalid or expired token"
+            if isinstance(payload, TokenError):
+                if payload == TokenError.EXPIRED:
+                    error_detail = "Token expired"
+                elif payload == TokenError.INVALID_SIGNATURE:
+                    error_detail = "Invalid token signature"
+                elif payload == TokenError.INVALID_ALGORITHM:
+                    error_detail = "Invalid token algorithm"
+                elif payload == TokenError.INVALID_FORMAT:
+                    error_detail = "Invalid token format"
+                elif payload == TokenError.INVALID_PAYLOAD:
+                    error_detail = "Invalid token payload"
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error_detail)
         if "role" not in payload:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token format")
         if payload["role"] not in roles:
