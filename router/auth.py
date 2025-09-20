@@ -6,8 +6,8 @@ from utils.db import get_db
 from utils.password_hash import verify_password
 from services.auth import get_current_user, require_roles
 from services.token import deactivate_token
-from models.auth import LoginRequest, AdminCreate, AdminOut
-from services.auth import login, create_admin, admin_login
+from models.auth import LoginRequest, AdminCreate, AdminOut, AdminBootstrapRequest
+from services.auth import login, create_admin, admin_login, create_bootstrap_admin
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -120,6 +120,23 @@ async def logout(current_user: dict = Depends(get_current_user)):
 # 👑 ADMIN MANAGEMENT ENDPOINTS
 # =============================================================================
 
+@router.post("/admin/bootstrap")
+def bootstrap_first_admin(data: AdminBootstrapRequest = Body(...)):
+    """
+    Bootstrap the first admin (only works if no admins exist)
+    """
+    try:
+        return create_bootstrap_admin(
+            employee_id=data.employee_id,
+            password=data.password,
+            full_name=data.full_name,
+            phone=data.phone,
+            email=data.email
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 @router.post("/admin/create", response_model=AdminOut)
 def create_new_admin(
