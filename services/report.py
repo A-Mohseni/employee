@@ -202,22 +202,38 @@ def delete_report(report_id: str, current_user: dict) -> dict:
 def approve_report(report_id: str, current_user: dict) -> report_out:
     if current_user.get("role") not in ["manager_women", "manager_men", "admin1", "admin2"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    db = get_db()
+    db = get_db("reports_db")
     report_collection = db["reports"]
-    doc = report_collection.find_one({"_id": ObjectId(report_id)})
+    # Try both _id and report_id fields
+    try:
+        doc = report_collection.find_one({"_id": ObjectId(report_id)})
+    except Exception:
+        doc = report_collection.find_one({"report_id": report_id})
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report Not Found")
     if doc["status"] != "pending":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state for approval")
-    report_collection.update_one(
-        {"_id": ObjectId(report_id)},
-        {"$set": {
-            "approved_by": current_user.get("user_id"),
-            "status": "approved",
-            "updated_at": datetime.now(),
-        }}
-    )
-    updated = report_collection.find_one({"_id": ObjectId(report_id)})
+    # Update using the same field we found the document with
+    if doc.get("_id"):
+        report_collection.update_one(
+            {"_id": ObjectId(report_id)},
+            {"$set": {
+                "approved_by": current_user.get("user_id"),
+                "status": "approved",
+                "updated_at": datetime.now(),
+            }}
+        )
+        updated = report_collection.find_one({"_id": ObjectId(report_id)})
+    else:
+        report_collection.update_one(
+            {"report_id": report_id},
+            {"$set": {
+                "approved_by": current_user.get("user_id"),
+                "status": "approved",
+                "updated_at": datetime.now(),
+            }}
+        )
+        updated = report_collection.find_one({"report_id": report_id})
     try:
         if current_user and current_user.get("user_id"):
             create_log(

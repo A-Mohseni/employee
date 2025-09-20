@@ -143,7 +143,11 @@ def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
     """
     db = get_db()
     collection = db["leave_requests"]
-    existing = collection.find_one({"_id": ObjectId(leave_id)})
+    # Find by _id (ObjectId)
+    try:
+        existing = collection.find_one({"_id": ObjectId(leave_id)})
+    except Exception:
+        existing = None
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Leave request not found")
 

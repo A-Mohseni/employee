@@ -84,3 +84,31 @@ async def approve_existing_report(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
+# Specific endpoints for manager_men
+@router.post("/{report_id}/approve-men", response_model=report_out)
+async def approve_report_men(
+    report_id: str = Path(...),
+    current_user: dict = Depends(require_roles("manager_men", "admin1", "admin2"))
+):
+    try:
+        return approve_report(report_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
+
+
+# Specific endpoints for manager_women
+@router.post("/{report_id}/approve-women", response_model=report_out)
+async def approve_report_women(
+    report_id: str = Path(...),
+    current_user: dict = Depends(require_roles("manager_women", "admin1", "admin2"))
+):
+    try:
+        return approve_report(report_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
+
+

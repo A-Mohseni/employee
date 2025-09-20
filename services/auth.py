@@ -10,17 +10,37 @@ security = HTTPBearer(auto_error=False)
 def _normalize_token(raw_token: str | None) -> str | None:
     if not raw_token:
         return raw_token
+    
+    # Handle None or empty string
+    if not isinstance(raw_token, str):
+        return None
+    
     token = raw_token.strip()
-    # Remove surrounding quotes if present
-    if len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
+    
+    # Handle empty token after strip
+    if not token:
+        return None
+    
+    # Remove surrounding quotes if present (single or double)
+    while len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
         token = token[1:-1].strip()
-    # Handle values that still include the Bearer prefix
-    lower = token.lower()
-    if lower.startswith("bearer "):
-        token = token.split(None, 1)[1].strip()
+    
+    # Handle multiple Bearer prefixes
+    while token.lower().startswith("bearer "):
+        parts = token.split(None, 1)
+        if len(parts) > 1:
+            token = parts[1].strip()
+        else:
+            break
+    
     # Remove quotes again in case they were around the inner token
-    if len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
+    while len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
         token = token[1:-1].strip()
+    
+    # Final validation - token should not be empty and should look like a JWT
+    if not token or len(token.split('.')) != 3:
+        return None
+    
     return token
 
 def get_current_user(
@@ -104,6 +124,14 @@ def login(employee_id: str, password: str):
     user = employees.find_one({"employee_id": emp_id})
     if not user or not user.get("password_hash") or not verify_password(password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid employee ID or password")
+    
+    # Deactivate all existing tokens for this user
+    try:
+        from services.token import deactivate_user_tokens
+        deactivate_user_tokens(str(user["_id"]))
+    except Exception as e:
+        print(f"Warning: Could not deactivate old tokens: {e}")
+    
     payload = {"user_id": str(user["_id"]), "role": user["role"]}
     token = create_access_token(payload, subject=str(user["_id"]))
     return {

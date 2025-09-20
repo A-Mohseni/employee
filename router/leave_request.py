@@ -113,5 +113,61 @@ async def reject_leave(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
+# Specific endpoints for manager_men
+@router.post("/{request_id}/approve-men", response_model=LeaveRequestOut)
+async def approve_leave_men(
+    request_id: str = Path(...),
+    current_user: dict = Depends(require_roles("manager_men", "admin1", "admin2"))
+):
+    try:
+        return approve_leave_phase1(request_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
+
+
+@router.post("/{request_id}/reject-men", response_model=LeaveRequestOut)
+async def reject_leave_men(
+    request_id: str = Path(...),
+    reason: str = Body(None),
+    current_user: dict = Depends(require_roles("manager_men", "admin1", "admin2"))
+):
+    try:
+        return reject_leave_request(request_id, current_user, reason)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
+
+
+# Specific endpoints for manager_women
+@router.post("/{request_id}/approve-women", response_model=LeaveRequestOut)
+async def approve_leave_women(
+    request_id: str = Path(...),
+    current_user: dict = Depends(require_roles("manager_women", "admin1", "admin2"))
+):
+    try:
+        return approve_leave_phase1(request_id, current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
+
+
+@router.post("/{request_id}/reject-women", response_model=LeaveRequestOut)
+async def reject_leave_women(
+    request_id: str = Path(...),
+    reason: str = Body(None),
+    current_user: dict = Depends(require_roles("manager_women", "admin1", "admin2"))
+):
+    try:
+        return reject_leave_request(request_id, current_user, reason)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
+
+
 
 

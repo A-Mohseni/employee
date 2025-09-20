@@ -80,6 +80,29 @@ def deactivate_token(token: str, user_id: str) -> bool:
 
 
 @service_exception
+def deactivate_user_tokens(user_id: str) -> int:
+    try:
+        db = get_db()
+        tokens_collection = db.tokens
+        
+        result = tokens_collection.update_many(
+            {
+                "user_id": user_id,
+                "is_active": True
+            },
+            {
+                "$set": {"is_active": False}
+            }
+        )
+        
+        return result.modified_count
+        
+    except Exception as e:
+        logger.exception("Error deactivating user tokens: %s", e)
+        return 0
+
+
+@service_exception
 def cleanup_expired_tokens() -> int:
     try:
         db = get_db()
