@@ -66,8 +66,55 @@ def test_model(data: TestModel):
     return {"received": data}
 
 
+async def create_default_admins():
+    """Create default admin accounts on startup"""
+    try:
+        from utils.db import get_db
+        from utils.password_hash import hash_password
+        from datetime import datetime
+        from bson import ObjectId
+        
+        db = get_db()
+        admins = db["admins"]
+        
+        # Check if any admin exists
+        if admins.count_documents({}) > 0:
+            print("✅ Admins already exist, skipping default admin creation")
+            return
+        
+        # Create default super admin
+        admin_data = {
+            "_id": ObjectId(),
+            "employee_id": "00001",
+            "full_name": "مدیر اصلی سیستم",
+            "password_hash": hash_password("admin123!"),
+            "role": "admin1",
+            "status": "active",
+            "phone": "09123456789",
+            "email": "admin@company.com",
+            "is_super_admin": True,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now()
+        }
+        
+        admins.insert_one(admin_data)
+        print("✅ Default super admin created successfully!")
+        print("   Employee ID: 00001")
+        print("   Password: admin123!")
+        print("   ⚠️  Please change the default password after first login!")
+        
+    except Exception as e:
+        print(f"❌ Error creating default admin: {e}")
+
 @app.on_event("startup")
-async def diagnose_openapi():
+async def startup_event():
+    """Application startup event"""
+    print("🚀 Starting Employee Management System...")
+    
+    # Create default admins
+    await create_default_admins()
+    
+    # OpenAPI diagnosis (if enabled)
     if os.getenv("DEBUG_OPENAPI", "1") != "1":
         return
     routes = [r for r in app.routes if isinstance(r, APIRoute)]

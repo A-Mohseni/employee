@@ -140,28 +140,104 @@ def login(employee_id: str, password: str):
         "token": token
     }
 
-def register(employee_id: str, password: str, role: str, phone: str, birthdate: str):
+def create_bootstrap_admin(employee_id: str, password: str, full_name: str, phone: str, email: str):
+    """Create the first admin of the system"""
     db = get_db()
-    employees = db["employees"]
+    admins = db["admins"]
+    
+    # Check if admin already exists
+    if admins.count_documents({}) > 0:
+        raise HTTPException(status_code=400, detail="Admin already exists")
+    
     try:
         emp_id = int(employee_id)
     except ValueError:
         emp_id = employee_id
-    if employees.find_one({"employee_id": emp_id}):
-        raise HTTPException(status_code=400, detail="Employee ID already exists")
+    
     hashed = hash_password(password)
     from datetime import datetime
     from bson import ObjectId
-    employees.insert_one({
+    
+    admin_data = {
         "_id": ObjectId(),
         "employee_id": emp_id,
-        "full_name": f"User {emp_id}",
+        "full_name": full_name,
+        "password_hash": hashed,
+        "role": "admin1",
+        "status": "active",
+        "phone": phone,
+        "email": email,
+        "is_super_admin": True,
+        "created_at": datetime.now(),
+        "updated_at": datetime.now()
+    }
+    
+    admins.insert_one(admin_data)
+    return {"message": "First admin created successfully"}
+
+def create_admin(employee_id: str, password: str, full_name: str, phone: str, email: str, role: str = "admin1", is_super_admin: bool = False):
+    """Create a new admin"""
+    db = get_db()
+    admins = db["admins"]
+    
+    try:
+        emp_id = int(employee_id)
+    except ValueError:
+        emp_id = employee_id
+    
+    if admins.find_one({"employee_id": emp_id}):
+        raise HTTPException(status_code=400, detail="Admin ID already exists")
+    
+    hashed = hash_password(password)
+    from datetime import datetime
+    from bson import ObjectId
+    
+    admin_data = {
+        "_id": ObjectId(),
+        "employee_id": emp_id,
+        "full_name": full_name,
         "password_hash": hashed,
         "role": role,
         "status": "active",
         "phone": phone,
-        "birthdate": birthdate,
+        "email": email,
+        "is_super_admin": is_super_admin,
         "created_at": datetime.now(),
         "updated_at": datetime.now()
-    })
-    return {"message": "User registered successfully"}
+    }
+    
+    admins.insert_one(admin_data)
+    return {"message": "Admin created successfully"}
+
+def admin_login(employee_id: str, password: str):
+    """Login for admins"""
+    db = get_db()
+    admins = db["admins"]
+    
+    # Try both string and int versions of employee_id
+    admin = admins.find_one({"employee_id": employee_id})
+    if not admin:
+        try:
+            emp_id = int(employee_id)
+            admin = admins.find_one({"employee_id": emp_id})
+        except ValueError:
+            pass
+    
+    if not admin or not admin.get("password_hash") or not verify_password(password, admin["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid admin ID or password")
+    
+    # Deactivate all existing tokens for this admin
+    try:
+        from services.token import deactivate_user_tokens
+        deactivate_user_tokens(str(admin["_id"]))
+    except Exception as e:
+        print(f"Warning: Could not deactivate old tokens: {e}")
+    
+    payload = {"user_id": str(admin["_id"]), "role": admin["role"]}
+    token = create_access_token(payload, subject=str(admin["_id"]))
+    return {
+        "user_id": str(admin["_id"]),
+        "role": admin["role"],
+        "token": token
+    }
+
