@@ -113,7 +113,6 @@ async def reject_leave(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-# Specific endpoints for manager_men
 @router.post("/{request_id}/approve-men", response_model=LeaveRequestOut)
 async def approve_leave_men(
     request_id: str = Path(...),
@@ -141,7 +140,6 @@ async def reject_leave_men(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-# Specific endpoints for manager_women
 @router.post("/{request_id}/approve-women", response_model=LeaveRequestOut)
 async def approve_leave_women(
     request_id: str = Path(...),

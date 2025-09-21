@@ -15,7 +15,6 @@ def get_dashboard(current_user: dict) -> DashboardStats:
 
     db = get_db()
 
-    # Reports metrics
     reports_coll = db["reports"]
     total_reports = reports_coll.count_documents({})
     reports_by_status_cursor = reports_coll.aggregate([
@@ -23,7 +22,6 @@ def get_dashboard(current_user: dict) -> DashboardStats:
     ])
     reports_by_status: Dict[str, int] = {doc["_id"]: doc["count"] for doc in reports_by_status_cursor if doc.get("_id") is not None}
 
-    # Leave requests metrics
     leaves_coll = db["leave_requests"]
     total_leave_request = leaves_coll.count_documents({})
     leave_by_status_cursor = leaves_coll.aggregate([

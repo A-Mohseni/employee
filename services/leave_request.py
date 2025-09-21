@@ -57,7 +57,6 @@ def get_leave_requests(
     db = get_db()
     collection = db["leave_requests"]
     query = {}
-    # Employees only see their own; managers/admins can filter
     if current_user and current_user.get("role") == "employee":
         query["created_by"] = current_user.get("user_id")
     elif user_id:
@@ -140,16 +139,9 @@ def delete_leave_request(leave_id: str, current_user: dict) -> dict:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete leave request")
 
 
-# اضافه‌شده: تایید مرحله اول مرخصی
 def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
-    """
-    Approve leave request for phase 1.
-    - تنها کاربران دارای نقش manager یا hr مجازند.
-    - فیلد status به 'approved_phase1' تغییر می‌کند و approved_by_phase1 و updated_at ذخیره می‌شود.
-    """
     db = get_db()
     collection = db["leave_requests"]
-    # Find by _id (ObjectId)
     try:
         existing = collection.find_one({"_id": ObjectId(leave_id)})
     except Exception:
@@ -193,11 +185,6 @@ def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
 
 
 def approve_leave_phase2(leave_id: str, current_user: dict) -> dict:
-    """
-    Approve leave request for phase 2.
-    - فقط کاربران با نقش 'manager' یا 'hr' مجازند.
-    - status به 'approved_phase2' تغییر می‌کند و approved_by_phase2 و updated_at ذخیره می‌شود.
-    """
     db = get_db()
     collection = db["leave_requests"]
     existing = collection.find_one({"_id": ObjectId(leave_id)})

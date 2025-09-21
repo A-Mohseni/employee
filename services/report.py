@@ -88,7 +88,6 @@ def get_reports(
     if current_user and current_user.get("role") == "employee":
         filter_query["created_by"] = current_user.get("user_id")
     else:
-        # Manager man/woman see employee reports
         if current_user and current_user.get("role") in ("manager_women", "manager_men"):
             if report_status:
                 filter_query["status"] = report_status
@@ -205,7 +204,6 @@ def approve_report(report_id: str, current_user: dict) -> report_out:
     db = get_db()
     report_collection = db["reports"]
     
-    # Find the report by _id
     try:
         doc = report_collection.find_one({"_id": ObjectId(report_id)})
     except Exception:
@@ -217,7 +215,6 @@ def approve_report(report_id: str, current_user: dict) -> report_out:
     if doc["status"] != "pending":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state for approval")
     
-    # Update the report
     update_data = {
         "approved_by": current_user.get("user_id"),
         "status": "approved",
@@ -229,7 +226,6 @@ def approve_report(report_id: str, current_user: dict) -> report_out:
         {"$set": update_data}
     )
     
-    # Get the updated document
     updated = report_collection.find_one({"_id": ObjectId(report_id)})
     
     try:

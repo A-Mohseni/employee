@@ -44,9 +44,6 @@ def create_access_token(
     if subject:
         to_encode["sub"] = subject
     
-    # Allow default key for development
-    # if SECRET_KEY == "your-secret-key-1234567890":
-    #     raise ValueError("JWT_SECRET_KEY environment variable must be set in production")
     
     try:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)

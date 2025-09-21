@@ -11,21 +11,17 @@ def _normalize_token(raw_token: str | None) -> str | None:
     if not raw_token:
         return raw_token
     
-    # Handle None or empty string
     if not isinstance(raw_token, str):
         return None
     
     token = raw_token.strip()
     
-    # Handle empty token after strip
     if not token:
         return None
     
-    # Remove surrounding quotes if present (single or double)
     while len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
         token = token[1:-1].strip()
     
-    # Handle multiple Bearer prefixes
     while token.lower().startswith("bearer "):
         parts = token.split(None, 1)
         if len(parts) > 1:
@@ -33,11 +29,9 @@ def _normalize_token(raw_token: str | None) -> str | None:
         else:
             break
     
-    # Remove quotes again in case they were around the inner token
     while len(token) >= 2 and token[0] in ('"', "'") and token[-1] == token[0]:
         token = token[1:-1].strip()
     
-    # Final validation - token should not be empty and should look like a JWT
     if not token or len(token.split('.')) != 3:
         return None
     
@@ -61,7 +55,6 @@ def get_current_user(
     payload = verify_token(token_value)
     if isinstance(payload, dict):
         return payload
-    # Map specific token errors to clearer messages
     error_detail = "Invalid token"
     if isinstance(payload, TokenError):
         if payload == TokenError.EXPIRED:
@@ -125,7 +118,6 @@ def login(employee_id: str, password: str):
     if not user or not user.get("password_hash") or not verify_password(password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid employee ID or password")
     
-    # Deactivate all existing tokens for this user
     try:
         from services.token import deactivate_user_tokens
         deactivate_user_tokens(str(user["_id"]))
@@ -145,7 +137,6 @@ def create_bootstrap_admin(employee_id: str, password: str, full_name: str, phon
     db = get_db()
     admins = db["admins"]
     
-    # Check if admin already exists
     if admins.count_documents({}) > 0:
         raise HTTPException(status_code=400, detail="Admin already exists")
     
@@ -214,7 +205,6 @@ def admin_login(employee_id: str, password: str):
     db = get_db()
     admins = db["admins"]
     
-    # Try both string and int versions of employee_id
     admin = admins.find_one({"employee_id": employee_id})
     if not admin:
         try:
@@ -226,7 +216,6 @@ def admin_login(employee_id: str, password: str):
     if not admin or not admin.get("password_hash") or not verify_password(password, admin["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid admin ID or password")
     
-    # Deactivate all existing tokens for this admin
     try:
         from services.token import deactivate_user_tokens
         deactivate_user_tokens(str(admin["_id"]))

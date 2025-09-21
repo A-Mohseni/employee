@@ -77,12 +77,9 @@ async def create_default_admins():
         db = get_db()
         admins = db["admins"]
         
-        # Check if any admin exists
         if admins.count_documents({}) > 0:
             print("✅ Admins already exist, skipping default admin creation")
             return
-        
-        # Create default super admin
         admin_data = {
             "_id": ObjectId(),
             "employee_id": "00001",
@@ -111,10 +108,8 @@ async def startup_event():
     """Application startup event"""
     print("🚀 Starting Employee Management System...")
     
-    # Create default admins
     await create_default_admins()
     
-    # OpenAPI diagnosis (if enabled)
     if os.getenv("DEBUG_OPENAPI", "1") != "1":
         return
     routes = [r for r in app.routes if isinstance(r, APIRoute)]

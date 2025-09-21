@@ -9,7 +9,6 @@ from models.log import logCreate
 
 
 def _map_document_to_checklist_out(document: dict) -> ChecklistOut:
-    # mapping simple helper (kept for safety)
     result = ChecklistOut(
         checklist_id=str(document["_id"]),
         title=document["title"],

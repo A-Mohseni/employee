@@ -19,9 +19,6 @@ class TokenOut(BaseModel):
     user_id: str
 
 
-# =============================================================================
-# 🔐 LOGIN ENDPOINTS
-# =============================================================================
 
 @router.post("/login", response_model=TokenOut)
 def login_employee(data: LoginRequest = Body(...), response: Response = None):
@@ -99,9 +96,6 @@ def login_admin(data: LoginRequest = Body(...), response: Response = None):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-# =============================================================================
-# 🚪 LOGOUT ENDPOINT
-# =============================================================================
 
 @router.post("/logout")
 async def logout(current_user: dict = Depends(get_current_user)):
@@ -116,9 +110,6 @@ async def logout(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error during logout: {str(e)}")
 
 
-# =============================================================================
-# 👑 ADMIN MANAGEMENT ENDPOINTS
-# =============================================================================
 
 @router.post("/admin/bootstrap")
 def bootstrap_first_admin(data: AdminBootstrapRequest = Body(...)):
@@ -155,7 +146,6 @@ def create_new_admin(
             is_super_admin=data.is_super_admin
         )
         
-        # Get the created admin data
         db = get_db()
         admins = db["admins"]
         admin = admins.find_one({"employee_id": data.employee_id})
@@ -213,9 +203,6 @@ def list_admins(current_user: dict = Depends(require_roles("admin1", "admin2")))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e) or "Internal Server Error")
 
 
-# =============================================================================
-# 👥 USER MANAGEMENT ENDPOINTS (for admins)
-# =============================================================================
 
 @router.post("/user/create")
 def create_user_by_admin(
@@ -227,7 +214,6 @@ def create_user_by_admin(
         from services.user import create_user
         from models.user import employee_create
         
-        # Convert dict to employee_create model
         user = employee_create(
             employee_id=user_data["employee_id"],
             full_name=user_data["full_name"],

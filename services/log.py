@@ -54,7 +54,6 @@ def create_log(data:logCreate,current_user:dict)->logOut:
 
     try:
         collection.insert_one(log_data)
-        # Ensure string serialization for id and user_id
         return logOut(
             _id=str(log_data["_id"]),
             action_type=log_data["action_type"],
