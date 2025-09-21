@@ -111,10 +111,10 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
 
 
 def get_all_users(current_user: dict) -> List[employee_out_with_password]:
-    if current_user.get("role") != "admin1":
+    if current_user.get("role") not in ("admin1", "admin2"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the administrator can view all users",
+            detail="Only admin1 or admin2 can view all users",
         )
 
     db = get_db()
@@ -130,7 +130,7 @@ def get_all_users(current_user: dict) -> List[employee_out_with_password]:
                 full_name=user["full_name"],
                 role=user["role"],
                 status=user["status"],
-                password_hash=mask_password(len(user.get("password_hash", ""))),
+                password_hash=mask_password(len(user.get("password_hash") or "")),
                 created_at=user["created_at"],
                 updated_at=user["updated_at"],
             )
@@ -218,7 +218,7 @@ def update_user(user_id: str, user_data: employee_update, current_user: dict):
         full_name=updated_user["full_name"],
         role=updated_user["role"],
         status=updated_user["status"],
-        password_hash=mask_password(len(updated_user.get("password_hash", ""))),
+        password_hash=mask_password(len(updated_user.get("password_hash", "") or "")),
         created_at=updated_user["created_at"],
         updated_at=updated_user["updated_at"],
     )

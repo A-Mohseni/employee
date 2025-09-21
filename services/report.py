@@ -16,7 +16,7 @@ from pymongo import ASCENDING, DESCENDING
 
 def create_report_indexes():
     try:
-        db = get_db("reports_db")
+        db = get_db()
         report_collection = db["reports"]
         
         report_collection.create_index([("created_by", ASCENDING)])
@@ -36,7 +36,7 @@ def create_report(data: report_create, current_user: dict) -> report_out:
     if current_user.get("role") not in ["employee", "manager_women", "manager_men", "admin1", "admin2"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    db = get_db("reports_db")
+    db = get_db()
     report_collection = db["reports"]
 
     report_data = {
@@ -64,7 +64,7 @@ def create_report(data: report_create, current_user: dict) -> report_out:
         pass
 
     return report_out(
-        report_id=str(result.inserted_id),
+        _id=str(result.inserted_id),
         created_by=str(report_data["created_by"]),
         content=report_data["content"],
         approved_by=report_data["approved_by"],
@@ -103,7 +103,7 @@ def get_reports(
     for doc in cursor:
         items.append(
             report_out(
-                report_id=str(doc["_id"]),
+                _id=str(doc["_id"]),
                 created_by=str(doc["created_by"]),
                 content=doc["content"],
                 approved_by=doc.get("approved_by"),
@@ -118,7 +118,7 @@ def get_reports(
 def update_report(
     report_id: str, update_data: report_update, current_user: dict
 ) -> report_out:
-    db = get_db("reports_db")
+    db = get_db()
     report_collection = db["reports"]
     existing_report = report_collection.find_one({"_id": ObjectId(report_id)})
     if not existing_report:
@@ -131,7 +131,7 @@ def update_report(
     update_fields = update_data.model_dump(exclude_unset=True)
     if not update_fields:
         return report_out(
-            report_id=str(existing_report["_id"]),
+            _id=str(existing_report["_id"]),
             created_by=str(existing_report["created_by"]),
             content=existing_report["content"],
             approved_by=existing_report.get("approved_by"),
@@ -156,7 +156,7 @@ def update_report(
     except Exception:
         pass
     return report_out(
-        report_id=str(updated_doc["_id"]),
+        _id=str(updated_doc["_id"]),
         created_by=str(updated_doc["created_by"]),
         content=updated_doc["content"],
         approved_by=updated_doc.get("approved_by"),
@@ -167,7 +167,7 @@ def update_report(
 
 
 def delete_report(report_id: str, current_user: dict) -> dict:
-    db = get_db("reports_db")
+    db = get_db()
     report_collection = db["reports"]
     doc = report_collection.find_one({"_id": ObjectId(report_id)})
     if not doc:
@@ -202,38 +202,36 @@ def delete_report(report_id: str, current_user: dict) -> dict:
 def approve_report(report_id: str, current_user: dict) -> report_out:
     if current_user.get("role") not in ["manager_women", "manager_men", "admin1", "admin2"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
-    db = get_db("reports_db")
+    db = get_db()
     report_collection = db["reports"]
-    # Try both _id and report_id fields
+    
+    # Find the report by _id
     try:
         doc = report_collection.find_one({"_id": ObjectId(report_id)})
     except Exception:
-        doc = report_collection.find_one({"report_id": report_id})
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid report ID format")
+    
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report Not Found")
+    
     if doc["status"] != "pending":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state for approval")
-    # Update using the same field we found the document with
-    if doc.get("_id"):
-        report_collection.update_one(
-            {"_id": ObjectId(report_id)},
-            {"$set": {
-                "approved_by": current_user.get("user_id"),
-                "status": "approved",
-                "updated_at": datetime.now(),
-            }}
-        )
-        updated = report_collection.find_one({"_id": ObjectId(report_id)})
-    else:
-        report_collection.update_one(
-            {"report_id": report_id},
-            {"$set": {
-                "approved_by": current_user.get("user_id"),
-                "status": "approved",
-                "updated_at": datetime.now(),
-            }}
-        )
-        updated = report_collection.find_one({"report_id": report_id})
+    
+    # Update the report
+    update_data = {
+        "approved_by": current_user.get("user_id"),
+        "status": "approved",
+        "updated_at": datetime.now(),
+    }
+    
+    report_collection.update_one(
+        {"_id": ObjectId(report_id)},
+        {"$set": update_data}
+    )
+    
+    # Get the updated document
+    updated = report_collection.find_one({"_id": ObjectId(report_id)})
+    
     try:
         if current_user and current_user.get("user_id"):
             create_log(
@@ -246,8 +244,9 @@ def approve_report(report_id: str, current_user: dict) -> report_out:
             )
     except Exception:
         pass
+    
     return report_out(
-        report_id=str(updated["_id"]),
+        _id=str(updated["_id"]),
         created_by=str(updated["created_by"]),
         content=updated["content"],
         approved_by=updated.get("approved_by"),

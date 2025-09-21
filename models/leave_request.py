@@ -42,7 +42,7 @@ class LeaveRequestOut(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    request_id: str = Field(default_factory=lambda: str(ObjectId()))
+    id: str = Field(alias="_id")
     created_by: str
     request_date: date
     start_date: date

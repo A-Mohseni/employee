@@ -35,7 +35,7 @@ class report_out(BaseModel):
         arbitrary_types_allowed=True,
         json_encoders={ObjectId: str}
     )
-    report_id: str = Field(default_factory=lambda: str(ObjectId()))
+    id: str = Field(alias="_id")
     created_by: str
     content: str
     approved_by: Optional[str] = None

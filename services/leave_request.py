@@ -29,14 +29,14 @@ def create_leave_request(data: LeaveRequestCreate, current_user: dict) -> dict:
     }
     try:
         result = collection.insert_one(doc)
-        doc["_id"] = result.inserted_id
+        doc["_id"] = str(result.inserted_id)
         try:
             if current_user and current_user.get("user_id"):
                 create_log(
                     logCreate(
                         action_type="leave_create",
                         user_id=current_user["user_id"],
-                        description=f"Created leave request {str(doc['_id'])}"
+                        description=f"Created leave request {doc['_id']}"
                     ),
                     current_user,
                 )
@@ -67,7 +67,11 @@ def get_leave_requests(
             query["created_by"] = user_id
     try:
         cursor = collection.find(query).skip(offset).limit(limit)
-        return list(cursor)
+        results = []
+        for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            results.append(doc)
+        return results
     except Exception as exc:
         logger.exception("Error fetching leave requests: %s", exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch leave requests")
@@ -88,6 +92,8 @@ def update_leave_request(leave_id: str, update_data: LeaveRequestUpdate, current
     try:
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_fields})
         updated = collection.find_one({"_id": ObjectId(leave_id)})
+        if updated:
+            updated["_id"] = str(updated["_id"])
         try:
             if current_user and current_user.get("user_id"):
                 create_log(
@@ -166,6 +172,8 @@ def approve_leave_phase1(leave_id: str, current_user: dict) -> dict:
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
         updated = collection.find_one({"_id": ObjectId(leave_id)})
+        if updated:
+            updated["_id"] = str(updated["_id"])
         try:
             if current_user and current_user.get("user_id"):
                 create_log(
@@ -211,6 +219,8 @@ def approve_leave_phase2(leave_id: str, current_user: dict) -> dict:
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
         updated = collection.find_one({"_id": ObjectId(leave_id)})
+        if updated:
+            updated["_id"] = str(updated["_id"])
         try:
             if current_user and current_user.get("user_id"):
                 create_log(
@@ -252,6 +262,8 @@ def reject_leave_request(leave_id: str, current_user: dict, reason: Optional[str
         }
         collection.update_one({"_id": ObjectId(leave_id)}, {"$set": update_payload})
         updated = collection.find_one({"_id": ObjectId(leave_id)})
+        if updated:
+            updated["_id"] = str(updated["_id"])
         try:
             if current_user and current_user.get("user_id"):
                 create_log(

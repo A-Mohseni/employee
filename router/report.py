@@ -18,7 +18,7 @@ from utils.error_handler import exception_handler
 @router.post("/", response_model=report_out, status_code=status.HTTP_201_CREATED)
 async def create_new_report(
     data: report_create = Body(...),
-    current_user: dict = Depends(require_roles("employee"))
+    current_user: dict = Depends(require_roles("employee", "manager_women", "manager_men", "admin1", "admin2"))
 ):
     try:
         return create_report(data, current_user)
