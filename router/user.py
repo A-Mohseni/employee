@@ -31,7 +31,7 @@ def create_first_admin(user: employee_create):
 
 
 @router.get("/", response_model=List[employee_out_with_password], status_code=status.HTTP_200_OK)
-def get_users(current_user: dict = Depends(require_roles("admin1", "admin2"))):
+def get_users(current_user: dict = Depends(require_roles("admin1", "admin2", "manager_women", "manager_men"))):
     try:
         return get_all_users(current_user)
     except HTTPException:

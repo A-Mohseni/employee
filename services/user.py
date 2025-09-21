@@ -111,10 +111,10 @@ def create_user(user: employee_create, current_user: dict, return_token: bool = 
 
 
 def get_all_users(current_user: dict) -> List[employee_out_with_password]:
-    if current_user.get("role") not in ("admin1", "admin2"):
+    if current_user.get("role") not in ("admin1", "admin2", "manager_women", "manager_men"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admin1 or admin2 can view all users",
+            detail="Only admin1, admin2, manager_women, or manager_men can view all users",
         )
 
     db = get_db()
