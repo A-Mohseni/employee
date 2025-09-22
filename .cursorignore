@@ -1,4 +1,4 @@
 .gitignore
 .venv
 /venv
-/uploads
+/avatars
