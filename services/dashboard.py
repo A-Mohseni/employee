@@ -3,6 +3,8 @@ from fastapi import HTTPException, status
 from bson import ObjectId
 from models.dashboard import DashboardStats
 from utils.db import get_db
+from typing import Dict
+from services.avatar import get_avatar
 
 
 def get_dashboard(current_user: dict) -> DashboardStats:
@@ -28,11 +30,15 @@ def get_dashboard(current_user: dict) -> DashboardStats:
         {"$group": {"_id": "$status", "count": {"$sum": 1}}}
     ])
     leave_request_by_status: Dict[str, int] = {doc["_id"]: doc["count"] for doc in leave_by_status_cursor if doc.get("_id") is not None}
-
+    avatar_url=get_avatar(current_user["user_id"],current_user).avatar_url if db["avatar"].find_one({"user_id":ObjectId(current_user["user_id"])})else None
+    
     return DashboardStats(
         total_reports=total_reports,
         reports_by_status=reports_by_status,
         total_leave_request=total_leave_request,
         leave_request_by_status=leave_request_by_status,
         user_id=str(current_user.get("user_id")) if current_user.get("user_id") is not None else None,
+        avatar_url=avatar_url    
+    
     )
+

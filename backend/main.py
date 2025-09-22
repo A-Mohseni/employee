@@ -16,6 +16,7 @@ import os
 from fastapi.openapi.utils import get_openapi
 from fastapi.routing import APIRoute
 from router.dashboard import router as dashboadrd_router
+from router.avatar import router as avatar_router
 
 
 
@@ -45,6 +46,7 @@ app.include_router(report_router)
 app.include_router(purchase_item_router)
 app.include_router(checklist_router)
 app.include_router(dashboadrd_router)
+app.include_router(avatar_router)
 
 class TestModel(BaseModel):
     name: str
